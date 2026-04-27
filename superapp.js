@@ -1,11 +1,13 @@
-// --- CẤU HÌNH BẢO MẬT SUPER ADMIN ---
+// ========================================================
+// FUSOFTX - SUPER ADMIN CORE LOGIC (PHIÊN BẢN ĐÃ NÂNG CẤP)
+// ========================================================
+
 const SUPER_ADMIN_EMAILS = ["nguyentinh52009@gmail.com", "tomizy09icloud@gmail.com"];
 
-// Khai báo biến Xuyên Cơ Sở Dữ Liệu
 let clientApp = null;
 let clientDb = null;
 let currentSchoolName = "";
-let allSchoolsConfig = []; // Lưu trữ để phân tích đa luồng
+let allSchoolsConfig = []; 
 
 firebase.auth().onAuthStateChanged((user) => {
     if (user && SUPER_ADMIN_EMAILS.includes(user.email)) {
@@ -14,6 +16,7 @@ firebase.auth().onAuthStateChanged((user) => {
         document.getElementById('sa-email').innerText = user.email;
         document.getElementById('sa-profile-email').value = user.email;
         loadLinkedSchools(); 
+        setupMagicPaste(); // Khởi động tính năng dán mã thông minh
     } else {
         if(user) firebase.auth().signOut();
         document.getElementById('login-screen').style.display = 'flex';
@@ -38,8 +41,63 @@ function switchSaTab(tabId, btn) {
     if(tabId === 'tab-support') loadClientTickets();
 }
 
+// ==========================================
+// TÍNH NĂNG NÂNG CẤP: MAGIC PASTE FIREBASE
+// ==========================================
+function setupMagicPaste() {
+    // Tạo ô textarea bự để dán cấu hình
+    const cfgContainer = document.getElementById('cfg-apiKey').parentElement;
+    cfgContainer.innerHTML = `
+        <div style="grid-column: span 2;">
+            <label style="font-size:0.85rem; color:#4f46e5; margin-bottom:5px;"><i class="fas fa-magic"></i> Magic Paste (Dán nguyên cục const firebaseConfig vào đây):</label>
+            <textarea id="magic-config-input" rows="6" style="width:100%; padding:10px; border-radius:8px; border:2px dashed #818cf8; background:#e0e7ff; font-family:monospace;" placeholder="const firebaseConfig = {\n  apiKey: 'AIzaSy...', \n  authDomain: '...',\n  ...\n};"></textarea>
+            <div id="magic-status" style="margin-top:5px; font-size:0.8rem; font-weight:bold;"></div>
+        </div>
+    `;
+
+    document.getElementById('magic-config-input').addEventListener('input', function(e) {
+        const text = e.target.value;
+        const status = document.getElementById('magic-status');
+        if(!text.trim()) { status.innerText = ""; return; }
+
+        try {
+            // Dùng Regex để tự động bóc tách các giá trị từ chuỗi Javascript Text
+            const extract = (key) => {
+                const regex = new RegExp(`${key}\\s*:\\s*['"\`]+([^'"\`]+)['"\`]+`);
+                const match = text.match(regex);
+                return match ? match[1] : null;
+            };
+
+            window.tempParsedConfig = {
+                apiKey: extract("apiKey"),
+                authDomain: extract("authDomain"),
+                projectId: extract("projectId"),
+                storageBucket: extract("storageBucket"),
+                messagingSenderId: extract("messagingSenderId"),
+                appId: extract("appId")
+            };
+
+            if(window.tempParsedConfig.apiKey && window.tempParsedConfig.projectId) {
+                status.innerHTML = `<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Bóc tách thành công Project: <b>${window.tempParsedConfig.projectId}</b></span>`;
+                e.target.style.borderColor = "#10b981";
+            } else {
+                status.innerHTML = `<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Không tìm thấy apiKey hoặc projectId hợp lệ!</span>`;
+                e.target.style.borderColor = "#ef4444";
+                window.tempParsedConfig = null;
+            }
+        } catch(err) {
+            status.innerHTML = `<span style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Lỗi định dạng!</span>`;
+            window.tempParsedConfig = null;
+        }
+    });
+}
+
 // --- QUẢN LÝ HỢP ĐỒNG ---
 async function saveContract() {
+    if (!window.tempParsedConfig || !window.tempParsedConfig.apiKey) {
+        return alert("❌ Vui lòng dán mã cấu hình Firebase hợp lệ vào ô Magic Paste!");
+    }
+
     const payload = {
         name: document.getElementById('contract-name').value.trim(),
         repName: document.getElementById('contract-rep').value.trim(),
@@ -47,27 +105,46 @@ async function saveContract() {
         package: document.getElementById('contract-package').value,
         startDate: document.getElementById('contract-start').value,
         endDate: document.getElementById('contract-end').value,
-        config: {
-            apiKey: document.getElementById('cfg-apiKey').value.trim(),
-            projectId: document.getElementById('cfg-projectId').value.trim(),
-            appId: document.getElementById('cfg-appId').value.trim(),
-            authDomain: document.getElementById('cfg-authDomain').value.trim(),
-            storageBucket: document.getElementById('cfg-storageBucket').value.trim(),
-            messagingSenderId: document.getElementById('cfg-messagingSenderId').value.trim()
-        }
+        config: window.tempParsedConfig // Lấy cấu hình đã được AI bóc tách
     };
 
-    if (!payload.name || !payload.config.apiKey || !payload.config.projectId || !payload.config.appId || !payload.startDate) 
-        return alert("Nhập đủ Tên, Ngày và các ô cấu hình có dấu *");
+    if (!payload.name || !payload.startDate) return alert("Nhập đủ Tên trường và Ngày bắt đầu!");
 
     try {
         await db.collection('linked_schools').add({...payload, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
-        alert("✅ Đã tạo Hợp đồng!");
-        ['contract-name','contract-rep','contract-phone','contract-start','contract-end','cfg-apiKey','cfg-projectId','cfg-appId','cfg-authDomain','cfg-storageBucket','cfg-messagingSenderId'].forEach(id => document.getElementById(id).value = '');
+        alert("✅ Đã tạo Hợp đồng & CSDL thành công!");
+        
+        // Reset form
+        ['contract-name','contract-rep','contract-phone','contract-start','contract-end','magic-config-input'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = '';
+        });
+        document.getElementById('magic-status').innerText = '';
+        window.tempParsedConfig = null;
+        document.getElementById('magic-config-input').style.borderColor = '#818cf8';
     } catch (e) { alert("Lỗi: " + e.message); }
 }
 
 function loadLinkedSchools() {
+    // THÊM: Ô tìm kiếm Trường học
+    const listContainer = document.getElementById('school-list').parentElement;
+    if(!document.getElementById('search-school')) {
+        listContainer.insertAdjacentHTML('afterbegin', `
+            <div style="margin-bottom:15px; position:relative;">
+                <input type="text" id="search-school" placeholder="Tìm tên trường / Người đại diện..." style="width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; outline:none;">
+                <i class="fas fa-search" style="position:absolute; right:15px; top:14px; color:#94a3b8;"></i>
+            </div>
+        `);
+
+        document.getElementById('search-school').addEventListener('input', function(e) {
+            const txt = e.target.value.toLowerCase();
+            document.querySelectorAll('.school-card-item').forEach(el => {
+                const content = el.innerText.toLowerCase();
+                el.style.display = content.includes(txt) ? 'block' : 'none';
+            });
+        });
+    }
+
     db.collection('linked_schools').orderBy('createdAt', 'desc').onSnapshot(snap => {
         document.getElementById('stat-schools').innerText = snap.size;
         const listDiv = document.getElementById('school-list'); listDiv.innerHTML = '';
@@ -75,7 +152,7 @@ function loadLinkedSchools() {
 
         snap.forEach(doc => {
             const d = doc.data();
-            allSchoolsConfig.push(d.config); // Đẩy vào mảng để Dashboard phân tích
+            allSchoolsConfig.push({ name: d.name, config: d.config }); 
             const configStr = encodeURIComponent(JSON.stringify(d.config));
             
             const today = new Date(); const endDate = new Date(d.endDate);
@@ -83,18 +160,28 @@ function loadLinkedSchools() {
             let stHtml = daysLeft < 0 ? `<span style="color:#ef4444;">Hết hạn</span>` : (daysLeft <= 30 ? `<span style="color:#f59e0b;">Sắp hết hạn</span>` : `<span style="color:#10b981;">Đang HĐ</span>`);
 
             listDiv.innerHTML += `
-                <div class="form-card" style="margin-bottom:0; border-left:4px solid var(--sp-primary);">
+                <div class="form-card school-card-item" style="margin-bottom:0; border-left:4px solid var(--sp-primary);">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                         <div><h3 style="margin:0;">${d.name}</h3><div style="font-size:0.85rem; color:#64748b;">Đại diện: ${d.repName} | SĐT: ${d.phone}</div></div>
                         <div style="text-align:right;"><span class="status-badge" style="background:#e0e7ff; color:#4338ca;">Gói ${d.package}</span><div style="font-size:0.85rem; margin-top:5px;">${stHtml}</div></div>
                     </div>
                     <div style="display:flex; gap:10px; justify-content:flex-end;">
-                        <button onclick="connectToSchool('${d.name}', '${configString}')" class="btn btn-success"><i class="fas fa-plug"></i> Truy cập CSDL</button>
-                        <button onclick="db.collection('linked_schools').doc('${doc.id}').delete()" class="btn btn-danger"><i class="fas fa-trash"></i></button>
+                        <button onclick="connectToSchool('${d.name}', '${configStr}')" class="btn btn-success"><i class="fas fa-plug"></i> Truy cập CSDL</button>
+                        <button onclick="deleteSchoolContract('${doc.id}', '${d.name}')" class="btn btn-danger"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
         });
     });
+}
+
+async function deleteSchoolContract(docId, name) {
+    if(confirm(`CẢNH BÁO: Xóa hợp đồng và ngắt kết nối với trường ${name} khỏi hệ thống FUSoftX?\n(Dữ liệu gốc của trường vẫn an toàn trên Firebase của họ).`)) {
+        if(currentSchoolName === name) {
+            alert("Vui lòng ngắt kết nối với trường này trước khi xóa!");
+            return;
+        }
+        await db.collection('linked_schools').doc(docId).delete();
+    }
 }
 
 // --- KẾT NỐI XUYÊN CSDL ---
@@ -102,20 +189,23 @@ async function connectToSchool(schoolName, configString) {
     try {
         const conf = JSON.parse(decodeURIComponent(configString));
         if (clientApp) { await clientApp.delete(); clientApp = null; clientDb = null; }
-        clientApp = firebase.initializeApp(conf, "ClientSchool"); clientDb = clientApp.firestore();
+        clientApp = firebase.initializeApp(conf, "ClientSchool_" + Date.now()); // Tránh lỗi Name Exist
+        clientDb = clientApp.firestore();
         currentSchoolName = schoolName;
 
         const stBar = document.getElementById('connection-status');
         stBar.style.background = '#dcfce7'; stBar.style.color = '#15803d';
-        stBar.innerHTML = `<span><i class="fas fa-link"></i> ĐANG TRUY CẬP DỮ LIỆU: <strong>${schoolName}</strong></span> <button onclick="location.reload()" class="btn btn-danger" style="padding:5px 10px;">Ngắt</button>`;
-        document.getElementById('lbl-tab-noti').innerHTML = `<i class="fas fa-bullhorn"></i> Gửi Thông Báo - <span style="color:var(--sp-primary);">${schoolName}</span>`;
-        document.getElementById('lbl-tab-support').innerHTML = `<i class="fas fa-headset"></i> Hỗ trợ Khách hàng - <span style="color:var(--sp-primary);">${schoolName}</span>`;
+        stBar.innerHTML = `<span><i class="fas fa-link"></i> ĐANG TRUY CẬP DỮ LIỆU: <strong style="text-transform:uppercase;">${schoolName}</strong></span> <button onclick="location.reload()" class="btn btn-danger" style="padding:5px 10px;">Ngắt kết nối</button>`;
+        document.getElementById('lbl-tab-noti').innerHTML = `<i class="fas fa-bullhorn"></i> Gửi Thông Báo - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
+        document.getElementById('lbl-tab-support').innerHTML = `<i class="fas fa-headset"></i> Hỗ trợ Khách hàng - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
         
         document.querySelectorAll('.nav-btn')[2].click(); // Chuyển sang Tab Thông báo
     } catch (e) { alert("Kết nối thất bại: " + e.message); }
 }
 
-// --- DASHBOARD TỔNG HỢP ĐA LUỒNG ---
+// ==========================================
+// TÍNH NĂNG NÂNG CẤP: DASHBOARD ĐA LUỒNG AN TOÀN
+// ==========================================
 async function loadGlobalDashboard() {
     const sDateStr = document.getElementById('dash-start').value;
     const eDateStr = document.getElementById('dash-end').value;
@@ -125,7 +215,7 @@ async function loadGlobalDashboard() {
     const eDate = new Date(eDateStr + "T23:59:59");
     
     const btn = document.querySelector('button[onclick="loadGlobalDashboard()"]');
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang quyét toàn bộ CSDL...'; btn.disabled = true;
+    btn.disabled = true;
 
     let totalStudents = 0;
     let totalVisits = 0;
@@ -133,47 +223,58 @@ async function loadGlobalDashboard() {
 
     try {
         for (let i = 0; i < allSchoolsConfig.length; i++) {
-            // Khởi tạo app tạm thời để chui vào DB của trường đó
-            const tempApp = firebase.initializeApp(allSchoolsConfig[i], "TempApp_" + i);
-            const tempDb = tempApp.firestore();
+            const school = allSchoolsConfig[i];
+            
+            // Cập nhật UI thanh tiến trình
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang phân tích ${i+1}/${allSchoolsConfig.length} trường...`;
 
-            // Đếm học sinh
-            const stSnap = await tempDb.collection('yt_students').get();
-            totalStudents += stSnap.size;
+            // VÁ LỖI FIREBASE NẰM Ở ĐÂY: Dùng Try-Finally để đảm bảo App rác bị xóa
+            const tempAppName = "TempApp_" + Date.now() + "_" + i;
+            let tempApp = null;
 
-            // Đếm và lọc lượt khám theo ngày
-            const vSnap = await tempDb.collection('yt_visits').where('timestamp', '>=', sDate).where('timestamp', '<=', eDate).get();
-            totalVisits += vSnap.size;
+            try {
+                tempApp = firebase.initializeApp(school.config, tempAppName);
+                const tempDb = tempApp.firestore();
 
-            vSnap.forEach(doc => {
-                const v = doc.data();
-                if(v.symptom) {
-                    v.symptom.toLowerCase().split(/[,+\/]+|\s+và\s+/g).forEach(s => { 
-                        let clean = s.trim(); 
-                        if(clean.length > 0) {
-                            clean = clean.charAt(0).toUpperCase() + clean.slice(1);
-                            diseaseMap[clean] = (diseaseMap[clean] || 0) + 1; 
-                        }
-                    });
-                }
-            });
+                // Đếm học sinh (Vẫn dùng get nhưng an toàn hơn vì xử lý từng trường một)
+                const stSnap = await tempDb.collection('yt_students').get();
+                totalStudents += stSnap.size;
 
-            // Xóa app tạm để giải phóng RAM
-            await tempApp.delete();
+                const vSnap = await tempDb.collection('yt_visits').where('timestamp', '>=', sDate).where('timestamp', '<=', eDate).get();
+                totalVisits += vSnap.size;
+
+                vSnap.forEach(doc => {
+                    const v = doc.data();
+                    if(v.symptom) {
+                        v.symptom.toLowerCase().split(/[,+\/]+|\s+và\s+/g).forEach(s => { 
+                            let clean = s.trim(); 
+                            if(clean.length > 0) {
+                                clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+                                diseaseMap[clean] = (diseaseMap[clean] || 0) + 1; 
+                            }
+                        });
+                    }
+                });
+            } catch (err) {
+                console.error(`Lỗi khi quét trường ${school.name}:`, err);
+            } finally {
+                // LUÔN LUÔN xóa app rác dù quét thành công hay thất bại
+                if(tempApp) await tempApp.delete();
+            }
         }
 
-        // Cập nhật lên UI
+        // Đổ dữ liệu ra UI
         document.getElementById('stat-total-students').innerText = totalStudents.toLocaleString();
         document.getElementById('stat-total-visits').innerText = totalVisits.toLocaleString();
 
         const sortedDiseases = Object.keys(diseaseMap).map(k => ({name: k, count: diseaseMap[k]})).sort((a,b)=>b.count - a.count).slice(0, 10);
         const tbody = document.getElementById('stat-diseases-list');
         tbody.innerHTML = '';
-        if(sortedDiseases.length === 0) tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Không có dữ liệu</td></tr>';
+        if(sortedDiseases.length === 0) tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Không có dữ liệu trong khoảng thời gian này</td></tr>';
         else sortedDiseases.forEach(d => { tbody.innerHTML += `<tr><td style="font-weight:500;">${d.name}</td><td style="text-align:right; font-weight:bold; color:#ef4444;">${d.count}</td></tr>`; });
 
     } catch (e) {
-        alert("Lỗi quét dữ liệu: " + e.message);
+        alert("Lỗi quá trình quét toàn cục: " + e.message);
     } finally {
         btn.innerHTML = '<i class="fas fa-sync-alt"></i> Phân tích Dữ liệu'; btn.disabled = false;
     }
@@ -207,7 +308,7 @@ function loadClientNotis() {
     if (!clientDb) return;
     clientDb.collection('yt_notifications').where('sender', '==', 'FUSoftX').orderBy('timestamp', 'desc').onSnapshot(snap => {
         const div = document.getElementById('sp-noti-list'); div.innerHTML = '';
-        if (snap.empty) return div.innerHTML = '<p>Chưa gửi thông báo nào cho trường này.</p>';
+        if (snap.empty) return div.innerHTML = '<p style="color:#64748b;">Chưa gửi thông báo nào cho trường này.</p>';
         snap.forEach(doc => {
             const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('vi-VN') : '';
             div.innerHTML += `<div class="form-card" style="padding:15px; margin-bottom:0; border-left:3px solid var(--sp-warning);">
@@ -218,19 +319,25 @@ function loadClientNotis() {
     });
 }
 
-// --- LIVE CHAT HỖ TRỢ TỪ ADMIN TRƯỜNG ---
+// ==========================================
+// TÍNH NĂNG NÂNG CẤP: CHAT TỰ ĐỘNG CUỘN & ĐÚNG BẢNG MỚI
+// ==========================================
 function loadClientTickets() {
     if (!clientDb) return;
     const filter = document.getElementById('ticket-filter').value;
+    
+    // ĐÃ FIX: Chỉ đọc đúng bảng yt_admin_support (Chat giữa Admin và Master)
     let query = clientDb.collection('yt_admin_support').orderBy('timestamp', 'desc');
     if (filter !== 'all') query = clientDb.collection('yt_admin_support').where('status', '==', filter).orderBy('timestamp', 'desc');
 
     query.onSnapshot(snap => {
         const div = document.getElementById('sp-ticket-list'); div.innerHTML = '';
-        if (snap.empty) return div.innerHTML = '<p style="color:#64748b;">Không có dữ liệu yêu cầu từ trường này.</p>';
+        if (snap.empty) return div.innerHTML = '<p style="color:#64748b;">Trường này chưa tạo yêu cầu hỗ trợ nào.</p>';
         snap.forEach(doc => {
             const t = doc.data(); 
-            let chatHtml = `<div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">`;
+            const chatBoxId = `chat-box-${doc.id}`;
+            
+            let chatHtml = `<div id="${chatBoxId}" style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">`;
             if (t.messages) {
                 t.messages.forEach(m => {
                     const isMe = m.sender === 'FUSoftX';
@@ -241,26 +348,32 @@ function loadClientTickets() {
 
             div.innerHTML += `<div class="form-card" style="margin-bottom:0; border-top: 4px solid ${t.status==='resolved'?'#94a3b8':'#10b981'};">
                 <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                    <div><strong style="color:var(--sp-primary); font-size:1.1rem;">${t.ticketId}</strong> - Yêu cầu từ Admin</div>
+                    <div><strong style="color:var(--sp-primary); font-size:1.1rem;">${t.ticketId}</strong> - Yêu cầu từ Phòng Y Tế</div>
                     <span class="status-badge" style="background:#f1f5f9; color:#475569;">Trạng thái: ${t.status === 'resolved' ? 'Đã đóng' : 'Đang xử lý'}</span>
                 </div>
                 ${chatHtml}
                 ${t.status !== 'resolved' ? `<div style="display:flex; gap:10px;">
-                    <input type="text" id="chat-reply-${doc.id}" placeholder="Nhập phản hồi cho Admin trường..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #cbd5e1; outline:none;">
+                    <input type="text" id="chat-reply-${doc.id}" placeholder="Nhập phản hồi cho trường..." onkeydown="if(event.key === 'Enter') replyClientTicket('${doc.id}')" style="flex:1; padding:10px; border-radius:8px; border:1px solid #cbd5e1; outline:none;">
                     <button onclick="replyClientTicket('${doc.id}')" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Gửi</button>
-                    <button onclick="closeClientTicket('${doc.id}')" class="btn btn-danger"><i class="fas fa-lock"></i> Đóng Hỗ trợ</button>
-                </div>` : `<div style="text-align:center; color:#94a3b8; font-size:0.85rem;"><i class="fas fa-lock"></i> Phiên chat đã được bạn đóng và lưu trữ</div>`}
+                    <button onclick="closeClientTicket('${doc.id}')" class="btn btn-danger"><i class="fas fa-lock"></i> Đóng HT</button>
+                </div>` : `<div style="text-align:center; color:#94a3b8; font-size:0.85rem;"><i class="fas fa-lock"></i> Phiên chat đã lưu trữ</div>`}
             </div>`;
+
+            // Tự động cuộn xuống cuối đoạn chat
+            setTimeout(() => {
+                const chatBox = document.getElementById(chatBoxId);
+                if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+            }, 100);
         });
     });
 }
 
 async function replyClientTicket(id) {
     if (!clientDb) return; const txt = document.getElementById(`chat-reply-${id}`).value.trim(); if (!txt) return;
-    document.getElementById(`chat-reply-${id}`).value = '';
+    document.getElementById(`chat-reply-${id}`).value = ''; // Xóa chữ ngay lập tức cho mượt
     try { await clientDb.collection('yt_admin_support').doc(id).update({ messages: firebase.firestore.FieldValue.arrayUnion({ sender: "FUSoftX", senderName: "Tổng đài FUSoftX", text: txt, time: Date.now() }), status: 'processing' }); } 
     catch(e) { alert("Lỗi: " + e.message); }
 }
 async function closeClientTicket(id) {
-    if (!clientDb) return; if(confirm("Đóng phiên chat này? Admin trường sẽ không thể gửi thêm tin nhắn vào đây nữa.")) await clientDb.collection('yt_admin_support').doc(id).update({ status: 'resolved' });
+    if (!clientDb) return; if(confirm("Đóng phiên chat này? Admin trường sẽ không thể gửi thêm tin nhắn.")) await clientDb.collection('yt_admin_support').doc(id).update({ status: 'resolved' });
 }
