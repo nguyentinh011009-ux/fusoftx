@@ -65,8 +65,13 @@
         <main class="main-content">
             <!-- TAB 1: DASHBOARD -->
             <section id="tab-dash" class="tab-pane active">
-                <h2><i class="fas fa-chart-line"></i> Tổng quan Hệ thống</h2>
-                <p>Chào mừng đến với hệ thống điều hành trung tâm.</p>
+                <h2 class="tab-title"><i class="fas fa-chart-pie"></i> Bảng điều khiển FUSoftX</h2>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    <div class="form-card" style="border-left: 5px solid var(--sp-primary);">
+                        <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">SỐ TRƯỜNG ĐANG QUẢN LÝ</div>
+                        <div id="stat-schools" style="font-size: 2.5rem; font-weight: bold; color: var(--sp-dark); margin-top: 10px;">0</div>
+                    </div>
+                </div>
             </section>
 
 <!-- TAB 5: LIÊN KẾT CƠ SỞ DỮ LIỆU -->
@@ -126,9 +131,57 @@
             </section>
             
             <!-- CÁC TAB KHÁC SẼ LÀM Ở GIAI ĐOẠN TIẾP THEO -->
-            <section id="tab-noti" class="tab-pane"><h2>Tab 2: Quản lý Thông báo (Đang xây dựng)</h2></section>
-            <section id="tab-support" class="tab-pane"><h2>Tab 3: Hỗ trợ từ Admin (Đang xây dựng)</h2></section>
-            <section id="tab-account" class="tab-pane"><h2>Tab 4: Quản lý Tài khoản (Đang xây dựng)</h2></section>
+            <section id="tab-noti" class="tab-pane"><h2>Tab 2: Quản lý Thông báo</h2>
+                        <section id="tab-noti" class="tab-pane">
+                <h2 class="tab-title"><i class="fas fa-bullhorn"></i> Gửi Thông Báo Kỹ Thuật</h2>
+                
+                <div class="form-card" style="border-top: 4px solid var(--sp-warning);">
+                    <h3 style="margin-top: 0; color: var(--sp-warning);"><i class="fas fa-paper-plane"></i> Soạn thông báo từ FUSoftX</h3>
+                    
+                    <div class="input-group"><label>Tiêu đề</label><input type="text" id="noti-title" placeholder="VD: Bảo trì hệ thống đêm nay..."></div>
+                    <div class="input-group"><label>Nội dung</label><textarea id="noti-content" rows="4" placeholder="Nhập nội dung chi tiết..."></textarea></div>
+                    
+                    <div class="input-group">
+                        <label>Gửi đến đối tượng nào? (Thuộc trường đang kết nối)</label>
+                        <select id="noti-target">
+                            <option value="admin_only">Chỉ gửi cho Bác sĩ / Admin Phòng Y Tế</option>
+                            <option value="all_students">Gửi cho toàn bộ Học sinh của trường</option>
+                        </select>
+                    </div>
+
+                    <button onclick="sendNotiToClient()" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--sp-warning); color: #fff;"><i class="fas fa-bell"></i> Phát thông báo</button>
+                </div>
+
+                <h3>Lịch sử gửi thông báo (Cho trường này)</h3>
+                <div id="sp-noti-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+            </section>
+            <section id="tab-support" class="tab-pane"><h2>Tab 3: Hỗ trợ từ Admin</h2>
+                        <section id="tab-support" class="tab-pane">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h2 class="tab-title" style="margin: 0;"><i class="fas fa-headset"></i> Trung tâm Hỗ trợ Khách hàng</h2>
+                    <select id="ticket-filter" onchange="loadClientTickets()" style="padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-weight: bold;">
+                        <option value="all">Tất cả yêu cầu</option>
+                        <option value="pending">Mới gửi</option>
+                        <option value="processing">Đang giải quyết</option>
+                        <option value="resolved">Đã đóng</option>
+                    </select>
+                </div>
+                <div id="sp-ticket-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+            </section>
+            <section id="tab-account" class="tab-pane"><h2>Tab 4: Quản lý Tài khoản (Đang xây dựng)</h2>
+                        <section id="tab-account" class="tab-pane">
+                <h2 class="tab-title"><i class="fas fa-shield-alt"></i> Bảo mật Tài khoản Super Admin</h2>
+                <div class="form-card">
+                    <div class="input-group">
+                        <label>Tài khoản đang đăng nhập:</label>
+                        <input type="text" id="sa-profile-email" readonly style="background: #f1f5f9; color: #64748b; font-weight: bold;">
+                    </div>
+                    <p style="font-size: 0.9rem; color: #64748b; line-height: 1.6;">
+                        * Quyền Super Admin được cấp vĩnh viễn cho 2 địa chỉ Email hệ thống.<br>
+                        * Nếu bạn muốn thay đổi mật khẩu của Email này, vui lòng truy cập phần Cài đặt Tài khoản Google (My Account) của Google để thay đổi.
+                    </p>
+                </div>
+            </section>
         </main>
     </div>
 
