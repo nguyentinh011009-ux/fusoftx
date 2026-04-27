@@ -142,3 +142,69 @@ async function deleteSchool(id) {
         await db.collection('linked_schools').doc(id).delete();
     }
 }
+// ==========================================
+// 3. HỆ THỐNG KẾT NỐI XUYÊN CƠ SỞ DỮ LIỆU (CROSS-DATABASE)
+// ==========================================
+
+// Biến lưu trữ kết nối đến CSDL của trường đang được chọn
+let clientApp = null;
+let clientDb = null;
+let currentSchoolName = "";
+
+// Cập nhật lại giao diện danh sách trường để thêm nút "Kết nối"
+function loadLinkedSchools() {
+    db.collection('linked_schools').orderBy('createdAt', 'desc').onSnapshot(snap => {
+        const listDiv = document.getElementById('school-list');
+        listDiv.innerHTML = '';
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            // Lưu dữ liệu config dưới dạng chuỗi JSON ẩn để nút bấm lấy được
+            const configString = encodeURIComponent(JSON.stringify(data.config));
+
+            listDiv.innerHTML += `
+                <div class="form-card" style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #10b981;">
+                    <div>
+                        <h3 style="margin: 0 0 5px;">${data.name}</h3>
+                        <p style="margin: 0; font-size: 0.8rem; color: #64748b;">Project ID: <strong>${data.config.projectId}</strong></p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="connectToSchool('${data.name}', '${configString}')" class="btn btn-primary" style="background: #10b981; padding: 8px 12px;"><i class="fas fa-plug"></i> Truy cập</button>
+                        <button onclick="deleteSchool('${doc.id}')" class="btn btn-danger" style="padding: 8px 12px;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+        });
+    });
+}
+
+// Hàm thực hiện "Xuyên không" vào CSDL của trường học
+async function connectToSchool(schoolName, configString) {
+    try {
+        const schoolConfig = JSON.parse(decodeURIComponent(configString));
+
+        // 1. Nếu trước đó đang kết nối với trường khác, phải ngắt kết nối cũ
+        if (clientApp) {
+            await clientApp.delete();
+            clientApp = null;
+            clientDb = null;
+        }
+
+        // 2. Khởi tạo một Firebase thứ 2 chạy song song với tên là "ClientSchool"
+        clientApp = firebase.initializeApp(schoolConfig, "ClientSchool");
+        clientDb = clientApp.firestore();
+        currentSchoolName = schoolName;
+
+        alert(`✅ ĐÃ TRUY CẬP VÀO HỆ THỐNG: ${schoolName}\n\nBây giờ bạn có thể sang Tab "Quản lý Thông báo" hoặc "Hỗ trợ" để làm việc với trường này.`);
+        
+        // Tự động chuyển sang Tab Quản lý thông báo
+        document.querySelectorAll('.nav-btn')[1].click(); // Click vào nút menu số 2
+        
+        // Đổi tiêu đề Tab thông báo để biết đang làm việc với trường nào
+        document.querySelector('#tab-noti h2').innerHTML = `<i class="fas fa-bullhorn"></i> Quản lý Thông báo - <span style="color: #4f46e5;">${schoolName}</span>`;
+
+    } catch (error) {
+        alert("❌ Kết nối thất bại. Có thể Config bị sai hoặc Firebase trường đó chưa cấp quyền.\nLỗi: " + error.message);
+        console.error(error);
+    }
+}
