@@ -54,29 +54,41 @@ function switchSaTab(tabId, btn) {
 
 // --- 2. XỬ LÝ TAB 5: LIÊN KẾT CƠ SỞ DỮ LIỆU CÁC TRƯỜNG ---
 
-// Hàm bóc tách JSON từ đoạn code JS người dùng dán vào
+// Hàm lưu thông tin cấu hình Firebase do người dùng nhập tay
 async function parseAndSaveSchool() {
     const schoolName = document.getElementById('school-name').value.trim();
-    const rawCode = document.getElementById('school-config-raw').value.trim();
+    
+    // Lấy thông tin từ các ô nhập liệu
+    const apiKey = document.getElementById('cfg-apiKey').value.trim();
+    const authDomain = document.getElementById('cfg-authDomain').value.trim();
+    const projectId = document.getElementById('cfg-projectId').value.trim();
+    const storageBucket = document.getElementById('cfg-storageBucket').value.trim();
+    const messagingSenderId = document.getElementById('cfg-messagingSenderId').value.trim();
+    const appId = document.getElementById('cfg-appId').value.trim();
+    const measurementId = document.getElementById('cfg-measurementId').value.trim();
 
-    if (!schoolName || !rawCode) return alert("Vui lòng nhập Tên trường và dán Code cấu hình!");
+    // Ràng buộc bảo mật: Bắt buộc phải có Tên trường, API Key, ProjectId và AppId
+    if (!schoolName || !apiKey || !projectId || !appId) {
+        return alert("Vui lòng nhập Tên trường và các thông số Firebase có dấu sao (*)");
+    }
+
+    const btn = document.querySelector('button[onclick="parseAndSaveSchool()"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang liên kết...';
+    btn.disabled = true;
 
     try {
-        // Dùng Regex để moi cái object {} bên trong đoạn text "const firebaseConfig = { ... }"
-        const regex = /\{[\s\S]*\}/; 
-        const match = rawCode.match(regex);
-        
-        if (!match) throw new Error("Không tìm thấy cấu hình hợp lệ. Hãy copy y nguyên khối ngoặc nhọn {}");
-        
-        // Chuyển chuỗi JS Object thành định dạng JSON chuẩn (Bọc ngoặc kép cho key)
-        let configStr = match[0]
-            .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ') // Thêm ngoặc kép cho các key
-            .replace(/'/g, '"'); // Đổi nháy đơn thành nháy kép
-
-        // Loại bỏ dấu phẩy thừa ở cuối (nếu có)
-        configStr = configStr.replace(/,\s*}/g, '}');
-
-        const schoolConfig = JSON.parse(configStr);
+        // Gom các trường lại thành Object chuẩn của Firebase
+        const schoolConfig = {
+            apiKey: apiKey,
+            authDomain: authDomain,
+            projectId: projectId,
+            storageBucket: storageBucket,
+            messagingSenderId: messagingSenderId,
+            appId: appId
+        };
+        // Gắn thêm measurementId nếu có nhập
+        if (measurementId) schoolConfig.measurementId = measurementId;
 
         // Lưu thông tin kết nối này vào Database của Super Admin
         await db.collection('linked_schools').add({
@@ -85,15 +97,25 @@ async function parseAndSaveSchool() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        alert("✅ Liên kết thành công!");
+        alert("✅ Liên kết Hệ thống Y Tế Số thành công!");
+        
+        // Reset sạch sẽ các ô nhập
         document.getElementById('school-name').value = '';
-        document.getElementById('school-config-raw').value = '';
+        document.getElementById('cfg-apiKey').value = '';
+        document.getElementById('cfg-authDomain').value = '';
+        document.getElementById('cfg-projectId').value = '';
+        document.getElementById('cfg-storageBucket').value = '';
+        document.getElementById('cfg-messagingSenderId').value = '';
+        document.getElementById('cfg-appId').value = '';
+        document.getElementById('cfg-measurementId').value = '';
 
     } catch (error) {
-        alert("❌ Lỗi phân tích Code: \nVui lòng copy chính xác đoạn 'const firebaseConfig = { ... }' từ Firebase.\nChi tiết lỗi: " + error.message);
+        alert("❌ Lỗi khi lưu dữ liệu: " + error.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
-
 // Hiển thị danh sách các trường đã liên kết
 function loadLinkedSchools() {
     db.collection('linked_schools').orderBy('createdAt', 'desc').onSnapshot(snap => {
