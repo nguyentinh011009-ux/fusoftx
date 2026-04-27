@@ -5,15 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FUSoftX - Quản trị Trung tâm</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css"> <!-- Đã tách file CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <link rel="icon" href="https://res.cloudinary.com/dsnlbzjby/image/upload/v1777275949/ChatGPT_Image_14_42_57_27_thg_4_2026_biernk.png">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root { --sp-primary: #4f46e5; --sp-primary-hover: #4338ca; --sp-dark: #0f172a; --sp-sidebar: #1e1b4b; --sp-bg: #f8fafc; --sp-text: #334155; --sp-success: #10b981; --sp-danger: #ef4444; --sp-warning: #f59e0b; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--sp-bg); color: var(--sp-text); overflow: hidden; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-primary { background: var(--sp-primary); color: white; }
+        .btn-primary:hover { background: var(--sp-primary-hover); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+        .btn-danger { background: var(--sp-danger); color: white; }
+        .btn-success { background: var(--sp-success); color: white; }
+        .form-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #f1f5f9; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.9rem; color: #475569; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; transition: 0.2s; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--sp-primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        .wrapper { display: flex; height: 100vh; }
+        .sidebar { width: 280px; background: var(--sp-sidebar); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .nav-btn { background: transparent; color: #a5b4fc; border: none; padding: 16px 20px; text-align: left; width: 100%; cursor: pointer; font-size: 1rem; font-weight: 500; transition: 0.3s; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-btn.active { background: var(--sp-primary); color: white; border-left: 4px solid #818cf8; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; background: var(--sp-bg); }
+        .tab-pane { display: none; animation: fadeIn 0.4s ease; }
+        .tab-pane.active { display: block; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Tối ưu hiển thị Logo */
+        .logo-box { width: 80px; height: 80px; background: white; border-radius: 15px; padding: 5px; display: flex; justify-content: center; align-items: center; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        table { width: 100%; border-collapse: collapse; } th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; } th { background: #f8fafc; color: #64748b; }
+    </style>
 </head>
 <body>
 
     <!-- ĐĂNG NHẬP SUPER ADMIN -->
     <div id="login-screen" style="position:fixed; inset:0; background:var(--sp-sidebar); z-index:9999; display:flex; align-items:center; justify-content:center;">
         <div class="form-card" style="width:100%; max-width:400px; text-align:center;">
-            <img src="https://res.cloudinary.com/dsnlbzjby/image/upload/v1777275949/ChatGPT_Image_14_42_57_27_thg_4_2026_biernk.png" alt="FUSoftX Logo" style="width: 100px; height: 100px; object-fit: cover; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+            <div class="logo-box">
+                <img src="https://res.cloudinary.com/dsnlbzjby/image/upload/v1777275949/ChatGPT_Image_14_42_57_27_thg_4_2026_biernk.png" alt="FUSoftX Logo">
+            </div>
             <h2 style="color: var(--sp-dark); margin-bottom: 5px;">FUSoftX LOGIN</h2>
             <p style="color:#64748b; font-size:0.95rem; margin-bottom: 25px;">Hệ thống cung cấp dịch vụ Y Tế Số</p>
             <button id="btn-login" onclick="loginSuperAdmin()" class="btn btn-primary" style="width:100%; justify-content:center; padding: 15px;">
@@ -27,16 +59,18 @@
         
         <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <img src="https://res.cloudinary.com/dsnlbzjby/image/upload/v1777275949/ChatGPT_Image_14_42_57_27_thg_4_2026_biernk.png" alt="Logo" style="width: 60px; height: 60px; border-radius: 12px; margin-bottom: 10px;">
+            <div style="padding: 25px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div class="logo-box" style="width: 60px; height: 60px; margin-bottom: 10px;">
+                    <img src="https://res.cloudinary.com/dsnlbzjby/image/upload/v1777275949/ChatGPT_Image_14_42_57_27_thg_4_2026_biernk.png" alt="FUSoftX">
+                </div>
                 <h3 style="margin:0; letter-spacing: 1px;">FUSoftX</h3>
                 <div id="sa-email" style="font-size: 0.75rem; color: #818cf8; margin-top: 5px;"></div>
             </div>
             <nav style="flex: 1; padding: 20px 0;">
-                <button class="nav-btn active" onclick="switchSaTab('tab-dash', this)"><i class="fas fa-chart-pie"></i> 1. Tổng quan</button>
-                <button class="nav-btn" onclick="switchSaTab('tab-noti', this)"><i class="fas fa-bullhorn"></i> 2. Gửi Thông báo</button>
-                <button class="nav-btn" onclick="switchSaTab('tab-support', this)"><i class="fas fa-headset"></i> 3. Hỗ trợ các trường</button>
-                <button class="nav-btn" onclick="switchSaTab('tab-link', this)"><i class="fas fa-link"></i> 4. Quản lý Dữ liệu</button>
+                <button class="nav-btn active" onclick="switchSaTab('tab-dash', this)"><i class="fas fa-chart-pie"></i> 1. Dashboard Tổng</button>
+                <button class="nav-btn" onclick="switchSaTab('tab-link', this)"><i class="fas fa-file-signature"></i> 2. Quản lý Hợp đồng</button>
+                <button class="nav-btn" onclick="switchSaTab('tab-noti', this)"><i class="fas fa-bullhorn"></i> 3. Gửi Thông báo</button>
+                <button class="nav-btn" onclick="switchSaTab('tab-support', this)"><i class="fas fa-headset"></i> 4. Kênh Chat Hỗ trợ</button>
                 <button class="nav-btn" onclick="switchSaTab('tab-account', this)"><i class="fas fa-shield-alt"></i> 5. Bảo mật Tài khoản</button>
             </nav>
             <div style="padding: 20px;">
@@ -47,107 +81,58 @@
         <!-- MAIN CONTENT -->
         <main class="main-content">
             
-            <!-- Trạng thái kết nối hiển thị ghim ở trên cùng -->
             <div id="connection-status" style="background: #fee2e2; color: #b91c1c; padding: 12px 20px; border-radius: 8px; margin-bottom: 25px; font-weight: bold; display: flex; align-items: center; justify-content: space-between;">
-                <span><i class="fas fa-exclamation-circle"></i> Đang chờ: Vui lòng vào Tab 4 chọn một trường để kết nối dữ liệu.</span>
+                <span><i class="fas fa-exclamation-circle"></i> Vui lòng vào Tab 2 (Quản lý Hợp đồng) chọn một trường để kết nối dữ liệu.</span>
             </div>
 
-            <!-- TAB 1: DASHBOARD -->
+            <!-- TAB 1: DASHBOARD TỔNG HỢP (XUYÊN CSDL) -->
             <section id="tab-dash" class="tab-pane active">
-                <h2 class="tab-title"><i class="fas fa-chart-pie"></i> Bảng điều khiển FUSoftX</h2>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
-                    <div class="form-card" style="border-left: 5px solid var(--sp-primary);">
+                <h2 style="color: var(--sp-dark); margin-top: 0; margin-bottom: 20px;"><i class="fas fa-chart-pie"></i> Dashboard Toàn Hệ Thống</h2>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="font-weight: bold; color: #475569;">LỌC THEO THỜI GIAN:</div>
+                    <input type="date" id="dash-start" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <input type="date" id="dash-end" style="padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <button onclick="loadGlobalDashboard()" class="btn btn-primary" style="padding: 8px 15px;"><i class="fas fa-sync-alt"></i> Phân tích Dữ liệu</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+                    <div class="form-card" style="border-left: 5px solid #4f46e5; margin:0;">
                         <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">SỐ TRƯỜNG ĐANG QUẢN LÝ</div>
                         <div id="stat-schools" style="font-size: 2.5rem; font-weight: bold; color: var(--sp-dark); margin-top: 10px;">0</div>
                     </div>
-                </div>
-            </section>
-
-            <!-- TAB 2: GỬI THÔNG BÁO -->
-            <section id="tab-noti" class="tab-pane">
-                <h2 class="tab-title"><i class="fas fa-bullhorn"></i> Gửi Thông Báo Kỹ Thuật</h2>
-                
-                <div class="form-card" style="border-top: 4px solid var(--sp-warning);">
-                    <h3 style="margin-top: 0; color: var(--sp-warning);"><i class="fas fa-paper-plane"></i> Soạn thông báo từ FUSoftX</h3>
-                    
-                    <div class="input-group"><label>Tiêu đề</label><input type="text" id="noti-title" placeholder="VD: Bảo trì hệ thống đêm nay..."></div>
-                    <div class="input-group"><label>Nội dung</label><textarea id="noti-content" rows="4" placeholder="Nhập nội dung chi tiết..."></textarea></div>
-                    
-                    <div class="input-group">
-                        <label>Gửi đến đối tượng nào? (Thuộc trường đang kết nối)</label>
-                        <select id="noti-target">
-                            <option value="admin_only">Chỉ gửi cho Bác sĩ / Admin Phòng Y Tế</option>
-                            <option value="all_students">Gửi cho toàn bộ Học sinh của trường</option>
-                        </select>
+                    <div class="form-card" style="border-left: 5px solid #10b981; margin:0;">
+                        <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">TỔNG HỌC SINH (Toàn hệ thống)</div>
+                        <div id="stat-total-students" style="font-size: 2.5rem; font-weight: bold; color: var(--sp-dark); margin-top: 10px;">--</div>
                     </div>
-
-                    <button onclick="sendNotiToClient()" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--sp-warning); color: #fff;"><i class="fas fa-bell"></i> Phát thông báo</button>
-                </div>
-
-                <h3>Lịch sử gửi thông báo (Cho trường này)</h3>
-                <div id="sp-noti-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
-            </section>
-
-<!-- TAB 3: HỖ TRỢ TICKETS (CHAT 2 CHIỀU) -->
-            <section id="tab-support" class="tab-pane">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                    <h2 class="tab-title" style="margin: 0;"><i class="fas fa-headset"></i> Kênh Chat Hỗ Trợ Khách Hàng</h2>
-                    <select id="ticket-filter" onchange="loadClientTickets()" style="padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-weight: bold;">
-                        <option value="all">Tất cả phiên Chat</option>
-                        <option value="pending">Chưa xử lý</option>
-                        <option value="processing">Đang trao đổi</option>
-                        <option value="resolved">Đã đóng (Lưu trữ)</option>
-                    </select>
-                </div>
-                <div id="sp-ticket-list" style="display: flex; flex-direction: column; gap: 20px;"></div>
-            </section>
-
-            <!-- TAB 4: LIÊN KẾT CƠ SỞ DỮ LIỆU -->
-            <section id="tab-link" class="tab-pane">
-                <h2 class="tab-title"><i class="fas fa-link"></i> Quản lý CSDL Khách hàng</h2>
-                
-                <div class="form-card" style="border-top: 4px solid var(--sp-primary);">
-                    <h3 style="margin-top: 0;">Thêm trường học mới (Client)</h3>
-                    <div class="input-group"><label>Tên Trường Học / Tên Đơn Vị</label><input type="text" id="school-name" placeholder="VD: THPT Võ Thị Sáu - BRVT" style="border: 2px solid #818cf8;"></div>
-                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div class="input-group" style="margin:0;"><label>apiKey *</label><input type="text" id="cfg-apiKey" placeholder="AIzaSy..."></div>
-                            <div class="input-group" style="margin:0;"><label>authDomain</label><input type="text" id="cfg-authDomain" placeholder="xxx.firebaseapp.com"></div>
-                            <div class="input-group" style="margin:0;"><label>projectId *</label><input type="text" id="cfg-projectId" placeholder="Tên project id"></div>
-                            <div class="input-group" style="margin:0;"><label>storageBucket</label><input type="text" id="cfg-storageBucket" placeholder="xxx.firebasestorage.app"></div>
-                            <div class="input-group" style="margin:0;"><label>messagingSenderId</label><input type="text" id="cfg-messagingSenderId" placeholder="Chỉ chứa số"></div>
-                            <div class="input-group" style="margin:0;"><label>appId *</label><input type="text" id="cfg-appId" placeholder="1:xxxxxx:web:xxxxxx"></div>
-                        </div>
+                    <div class="form-card" style="border-left: 5px solid #ef4444; margin:0;">
+                        <div style="color: #64748b; font-weight: 600; font-size: 0.9rem;">TỔNG LƯỢT KHÁM BỆNH</div>
+                        <div id="stat-total-visits" style="font-size: 2.5rem; font-weight: bold; color: var(--sp-dark); margin-top: 10px;">--</div>
                     </div>
-                    <button onclick="parseAndSaveSchool()" class="btn btn-primary" style="width: 100%; justify-content: center;"><i class="fas fa-plus"></i> Thêm Khách hàng</button>
                 </div>
 
-                <h3>Danh sách các trường</h3>
-                <div id="school-list" style="display: grid; gap: 15px;"></div>
+                <div class="form-card">
+                    <h3 style="margin-top:0; color:#ef4444;"><i class="fas fa-virus"></i> Thống kê Bệnh Phổ Biến (Tất cả các trường)</h3>
+                    <table>
+                        <thead><tr><th>Tên Bệnh / Triệu chứng</th><th style="text-align:right;">Số ca ghi nhận</th></tr></thead>
+                        <tbody id="stat-diseases-list"><tr><td colspan="2" style="text-align:center; color:#94a3b8;">Chọn ngày và bấm Phân tích để xem dữ liệu...</td></tr></tbody>
+                    </table>
+                </div>
             </section>
-            
-          <!-- TAB 5: QUẢN LÝ HỢP ĐỒNG & CSDL -->
+
+            <!-- TAB 5: QUẢN LÝ HỢP ĐỒNG -->
             <section id="tab-link" class="tab-pane">
-                <h2 class="tab-title"><i class="fas fa-file-signature"></i> Quản lý Hợp đồng & Dữ liệu</h2>
-                
+                <h2 style="color: var(--sp-dark); margin-top: 0; margin-bottom: 20px;"><i class="fas fa-file-signature"></i> Quản lý Hợp đồng & Dữ liệu</h2>
                 <div class="form-card" style="border-top: 4px solid var(--sp-primary);">
                     <h3 style="margin-top: 0;">Tạo Hợp Đồng Mới</h3>
-                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="input-group"><label>Tên Trường / Đơn Vị</label><input type="text" id="contract-name" placeholder="VD: THPT Võ Thị Sáu"></div>
                         <div class="input-group"><label>Người đại diện</label><input type="text" id="contract-rep" placeholder="Tên Hiệu trưởng / Admin"></div>
                         <div class="input-group"><label>Số điện thoại liên hệ</label><input type="text" id="contract-phone" placeholder="SĐT"></div>
-                        <div class="input-group"><label>Gói dịch vụ</label>
-                            <select id="contract-package" style="padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
-                                <option value="Basic">Cơ bản (Quản lý nội bộ)</option>
-                                <option value="Pro">Nâng cao (Có AI + SMS)</option>
-                                <option value="Enterprise">Doanh nghiệp (Full tính năng)</option>
-                            </select>
-                        </div>
+                        <div class="input-group"><label>Gói dịch vụ</label><select id="contract-package"><option value="Basic">Cơ bản (Quản lý nội bộ)</option><option value="Pro">Nâng cao (Có AI)</option></select></div>
                         <div class="input-group"><label>Ngày bắt đầu</label><input type="date" id="contract-start"></div>
                         <div class="input-group"><label>Ngày kết thúc</label><input type="date" id="contract-end"></div>
                     </div>
-
                     <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; margin: 20px 0;">
                         <p style="margin-top: 0; font-size: 0.85rem; color: #64748b; font-weight:bold;">THÔNG SỐ KẾT NỐI FIREBASE CỦA TRƯỜNG</p>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -159,11 +144,66 @@
                             <input type="text" id="cfg-messagingSenderId" placeholder="messagingSenderId">
                         </div>
                     </div>
-                    <button onclick="saveContract()" class="btn btn-primary" style="width: 100%; justify-content: center; height: 45px;"><i class="fas fa-file-signature"></i> Ký Hợp Đồng & Liên Kết CSDL</button>
+                    <button onclick="saveContract()" class="btn btn-primary" style="width: 100%; justify-content: center;"><i class="fas fa-save"></i> Ký Hợp Đồng & Liên Kết CSDL</button>
                 </div>
-
                 <h3>Danh sách Hợp đồng đang quản lý</h3>
                 <div id="school-list" style="display: grid; gap: 15px;"></div>
+            </section>
+
+            <!-- TAB 2: GỬI THÔNG BÁO -->
+            <section id="tab-noti" class="tab-pane">
+                <h2 style="color: var(--sp-dark); margin-top: 0; margin-bottom: 20px;" id="lbl-tab-noti"><i class="fas fa-bullhorn"></i> Gửi Thông Báo</h2>
+                
+                <div class="form-card" style="border-top: 4px solid var(--sp-warning);">
+                    <div class="input-group"><label>Tiêu đề thông báo</label><input type="text" id="noti-title" placeholder="VD: Lịch nâng cấp hệ thống..."></div>
+                    <div class="input-group">
+                        <label>Nội dung (Hỗ trợ dán mã HTML/Iframe)</label>
+                        <textarea id="noti-content" rows="5" placeholder="Nhập văn bản bình thường hoặc dán mã nhúng <iframe> YouTube, Link ảnh..."></textarea>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="input-group">
+                            <label>Đối tượng nhận</label>
+                            <select id="noti-target" onchange="toggleNotiInput()">
+                                <option value="admin_only">Chỉ Gửi Admin/Bác sĩ</option>
+                                <option value="all">Gửi toàn bộ Học sinh trường</option>
+                                <option value="grade">Gửi theo Khối (VD: Khối 10)</option>
+                                <option value="class">Gửi theo Lớp (VD: 11A4)</option>
+                                <option value="student">Gửi 1 Học sinh (Mã YT)</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="box-noti-val" style="display: none;">
+                            <label id="lbl-noti-val">Nhập thông tin</label>
+                            <input type="text" id="noti-val" placeholder="...">
+                        </div>
+                    </div>
+                    <button onclick="sendNotiToClient()" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--sp-warning);"><i class="fas fa-paper-plane"></i> Gửi Thông Báo Xuống Hệ Thống</button>
+                </div>
+
+                <h3>Lịch sử gửi (Trường hiện tại)</h3>
+                <div id="sp-noti-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+            </section>
+
+            <!-- TAB 3: HỖ TRỢ TICKETS -->
+            <section id="tab-support" class="tab-pane">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h2 style="color: var(--sp-dark); margin: 0;" id="lbl-tab-support"><i class="fas fa-headset"></i> Kênh Chat Hỗ Trợ Khách Hàng</h2>
+                    <select id="ticket-filter" onchange="loadClientTickets()" style="padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-weight: bold;">
+                        <option value="all">Tất cả phiên Chat</option>
+                        <option value="pending">Chưa xử lý</option>
+                        <option value="processing">Đang trao đổi</option>
+                        <option value="resolved">Đã đóng (Lưu trữ)</option>
+                    </select>
+                </div>
+                <div id="sp-ticket-list" style="display: flex; flex-direction: column; gap: 20px;"></div>
+            </section>
+
+            <!-- TAB 4: TÀI KHOẢN -->
+            <section id="tab-account" class="tab-pane">
+                <h2 style="color: var(--sp-dark); margin-top: 0; margin-bottom: 20px;"><i class="fas fa-shield-alt"></i> Bảo mật Tài khoản</h2>
+                <div class="form-card">
+                    <div class="input-group"><label>Tài khoản đang đăng nhập:</label><input type="text" id="sa-profile-email" readonly style="background: #f1f5f9; font-weight: bold;"></div>
+                    <p style="font-size: 0.9rem; color: #64748b; line-height: 1.6;">Quyền Super Admin được cấp cứng cho hệ thống. Đổi mật khẩu qua Google Account.</p>
+                </div>
             </section>
         </main>
     </div>
