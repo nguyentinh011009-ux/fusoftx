@@ -126,7 +126,7 @@ async function saveContract() {
 }
 
 function loadLinkedSchools() {
-    // THÊM: Ô tìm kiếm Trường học
+    // Ô tìm kiếm Trường học
     const listContainer = document.getElementById('school-list').parentElement;
     if(!document.getElementById('search-school')) {
         listContainer.insertAdjacentHTML('afterbegin', `
@@ -145,14 +145,21 @@ function loadLinkedSchools() {
         });
     }
 
-    db.collection('linked_schools').orderBy('createdAt', 'desc').onSnapshot(snap => {
+    db.collection('linked_schools').onSnapshot(snap => {
         document.getElementById('stat-schools').innerText = snap.size;
         const listDiv = document.getElementById('school-list'); listDiv.innerHTML = '';
         allSchoolsConfig = [];
 
+        if (snap.empty) {
+            listDiv.innerHTML = '<div style="color:#94a3b8;">Chưa có hợp đồng nào. Hãy tạo mới ở form phía trên.</div>';
+            return;
+        }
+
         snap.forEach(doc => {
             const d = doc.data();
             allSchoolsConfig.push({ name: d.name, config: d.config }); 
+            
+            // Tên biến đúng là configStr
             const configStr = encodeURIComponent(JSON.stringify(d.config));
             
             const today = new Date(); const endDate = new Date(d.endDate);
@@ -166,6 +173,7 @@ function loadLinkedSchools() {
                         <div style="text-align:right;"><span class="status-badge" style="background:#e0e7ff; color:#4338ca;">Gói ${d.package}</span><div style="font-size:0.85rem; margin-top:5px;">${stHtml}</div></div>
                     </div>
                     <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <!-- Đã sửa configString thành configStr ở dòng dưới này -->
                         <button onclick="connectToSchool('${d.name}', '${configStr}')" class="btn btn-success"><i class="fas fa-plug"></i> Truy cập CSDL</button>
                         <button onclick="deleteSchoolContract('${doc.id}', '${d.name}')" class="btn btn-danger"><i class="fas fa-trash"></i></button>
                     </div>
