@@ -151,9 +151,9 @@
                 <div id="school-list" style="display: grid; gap: 15px;"></div>
             </section>
 
-            <!-- TAB 2: GỬI THÔNG BÁO -->
+<!-- TAB 2: GỬI THÔNG BÁO -->
             <section id="tab-noti" class="tab-pane">
-                <h2 style="color: var(--sp-dark); margin-top: 0; margin-bottom: 20px;" id="lbl-tab-noti"><i class="fas fa-bullhorn"></i> Gửi Thông Báo</h2>
+                <h2 class="tab-title" id="lbl-tab-noti"><i class="fas fa-bullhorn"></i> Gửi Thông Báo</h2>
                 
                 <div class="form-card" style="border-top: 4px solid var(--sp-warning);">
                     <div class="input-group"><label>Tiêu đề thông báo</label><input type="text" id="noti-title" placeholder="VD: Lịch nâng cấp hệ thống..."></div>
@@ -180,10 +180,24 @@
                     <button onclick="sendNotiToClient()" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--sp-warning);"><i class="fas fa-paper-plane"></i> Gửi Thông Báo Xuống Hệ Thống</button>
                 </div>
 
-                <h3>Lịch sử gửi (Trường hiện tại)</h3>
-                <div id="sp-noti-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+                <!-- LỊCH SỬ GỬI (ĐÃ SỬA LẠI TÊN) -->
+                <h3><i class="fas fa-history"></i> Lịch sử Gửi từ FUSoftX (Toàn bộ)</h3>
+                <div class="form-card" style="padding: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Trường học</th>
+                                <th>Đối tượng</th>
+                                <th>Tiêu đề</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fusoftx-noti-log">
+                            <!-- JS sẽ load lịch sử vào đây -->
+                        </tbody>
+                    </table>
+                </div>
             </section>
-
             <!-- TAB 3: HỖ TRỢ TICKETS -->
             <section id="tab-support" class="tab-pane">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
