@@ -73,23 +73,51 @@
             <section id="tab-link" class="tab-pane">
                 <h2><i class="fas fa-link"></i> Quản lý Cơ sở dữ liệu các trường</h2>
                 
-                <div class="form-card" style="border-top: 4px solid var(--sp-primary);">
-                    <h3>Thêm trường học mới (Client)</h3>
+<div class="form-card" style="border-top: 4px solid var(--sp-primary);">
+                    <h3 style="margin-top: 0;">Thêm trường học mới (Client)</h3>
+                    
                     <div class="input-group">
-                        <label>Tên Trường Học / Tên Đơn Vị</label>
-                        <input type="text" id="school-name" placeholder="VD: THPT Võ Thị Sáu - BRVT">
+                        <label style="color: var(--sp-primary);">Tên Trường Học / Tên Đơn Vị</label>
+                        <input type="text" id="school-name" placeholder="VD: THPT Võ Thị Sáu - BRVT" style="border: 2px solid #818cf8;">
                     </div>
-                    <div class="input-group">
-                        <label>Dán toàn bộ đoạn code <code>firebaseConfig</code> của trường đó vào đây:</label>
-                        <textarea id="school-config-raw" rows="8" placeholder="const firebaseConfig = {
-  apiKey: 'AIzaSy...',
-  authDomain: '...',
-  ...
-};" style="font-family: monospace; background: #1e293b; color: #a5b4fc; border:none;"></textarea>
-                    </div>
-                    <button onclick="parseAndSaveSchool()" class="btn btn-primary"><i class="fas fa-save"></i> Liên kết Hệ thống</button>
-                </div>
 
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <p style="margin-top: 0; font-size: 0.85rem; color: #64748b; margin-bottom: 15px;"><i class="fas fa-info-circle"></i> Vui lòng copy và dán các thông số trong Firebase SDK của trường vào các ô tương ứng dưới đây:</p>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>apiKey *</label>
+                                <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>authDomain</label>
+                                <input type="text" id="cfg-authDomain" placeholder="xxx.firebaseapp.com">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>projectId *</label>
+                                <input type="text" id="cfg-projectId" placeholder="Tên project id">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>storageBucket</label>
+                                <input type="text" id="cfg-storageBucket" placeholder="xxx.firebasestorage.app">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>messagingSenderId</label>
+                                <input type="text" id="cfg-messagingSenderId" placeholder="Chỉ chứa số">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>appId *</label>
+                                <input type="text" id="cfg-appId" placeholder="1:xxxxxx:web:xxxxxx">
+                            </div>
+                            <div class="input-group" style="grid-column: span 2; margin-bottom: 0;">
+                                <label>measurementId (Không bắt buộc)</label>
+                                <input type="text" id="cfg-measurementId" placeholder="G-XXXXXX">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="parseAndSaveSchool()" class="btn btn-primary" style="width: 100%; justify-content: center; height: 45px;"><i class="fas fa-link"></i> Tiến hành Liên kết Hệ thống</button>
+                </div>
                 <h3>Danh sách các trường đang quản lý</h3>
                 <div id="school-list" style="display: grid; gap: 15px;">
                     <!-- JS sẽ đổ danh sách vào đây -->
