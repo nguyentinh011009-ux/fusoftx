@@ -192,7 +192,6 @@ async function deleteSchoolContract(docId, name) {
     }
 }
 
-// --- KẾT NỐI XUYÊN CSDL ---
 // --- KẾT NỐI XUYÊN CSDL & ĐĂNG NHẬP NGẦM ---
 async function connectToSchool(schoolName, configString) {
     try {
@@ -204,7 +203,7 @@ async function connectToSchool(schoolName, configString) {
         clientDb = clientApp.firestore();
 
         // 2. KỸ THUẬT SILENT LOGIN: Đăng nhập ngầm bằng tài khoản Bot của FUSoftX
-        // Bước này giúp FUSoftX chính thức có danh phận trong CSDL của trường, vượt qua mọi bức tường Rules
+        // Bắt buộc phải có dòng này thì lệnh gửi thông báo mới không bị báo lỗi Permission
         await clientApp.auth().signInWithEmailAndPassword("master@fusoftx.com", "fusoftx123456");
 
         currentSchoolName = schoolName;
@@ -221,7 +220,7 @@ async function connectToSchool(schoolName, configString) {
         document.querySelectorAll('.nav-btn')[2].click(); 
 
     } catch (e) { 
-        alert("Kết nối thất bại (Vui lòng kiểm tra lại Rules Firebase hoặc Mã Config): " + e.message); 
+        alert("Kết nối CSDL thất bại: " + e.message); 
     }
 }
 
