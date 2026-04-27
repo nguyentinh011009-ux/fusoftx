@@ -3,7 +3,8 @@
 // ========================================================
 
 const SUPER_ADMIN_EMAILS = ["nguyentinh52009@gmail.com", "tomizy09icloud@gmail.com"];
-
+let activeDatabases = {}; // Nơi chứa KẾT NỐI SẴN SÀNG của tất cả các trường
+let globalStudentsCache = []; // Nơi chứa TẤT CẢ HỌC SINH của hệ thống
 let clientApp = null;
 let clientDb = null;
 let currentSchoolName = "";
@@ -156,6 +157,7 @@ function loadLinkedSchools() {
         }
 
         snap.forEach(doc => {
+            initAllDatabasesAndCache();
             const d = doc.data();
             allSchoolsConfig.push({ name: d.name, config: d.config }); 
             
@@ -397,4 +399,235 @@ async function replyClientTicket(id) {
 }
 async function closeClientTicket(id) {
     if (!clientDb) return; if(confirm("Đóng phiên chat này? Admin trường sẽ không thể gửi thêm tin nhắn.")) await clientDb.collection('yt_admin_support').doc(id).update({ status: 'resolved' });
+}
+// ==========================================
+// HỆ THỐNG TRA CỨU ĐA LUỒNG & CHỈNH SỬA (MULTIPLE DATABASES)
+// ==========================================
+
+// 1. Hàm khởi tạo kết nối ngầm tới TẤT CẢ CÁC TRƯỜNG
+async function initAllDatabasesAndCache() {
+    console.log("Đang mở luồng kết nối tới toàn bộ trường học...");
+    
+    for (let school of allSchoolsConfig) {
+        if (!activeDatabases[school.name]) {
+            try {
+                // Tạo kết nối ngầm định
+                const appName = "GlobalApp_" + school.name.replace(/\s+/g, '') + "_" + Date.now();
+                const app = firebase.initializeApp(school.config, appName);
+                
+                // Đăng nhập ngầm để lấy quyền truy cập CSDL của trường đó
+                await app.auth().signInWithEmailAndPassword("master@fusoftx.com", "fusoftx123456");
+                
+                // Lưu kết nối vào RAM để xài chung
+                activeDatabases[school.name] = app.firestore();
+            } catch(e) {
+                console.error(`Lỗi mở luồng trường ${school.name}:`, e);
+            }
+        }
+    }
+    
+    // Sau khi mở luồng xong, nạp bộ đệm học sinh
+    refreshGlobalCache();
+}
+
+// 2. Nạp toàn bộ học sinh vào RAM để tra cứu siêu tốc
+async function refreshGlobalCache() {
+    const btn = document.querySelector('button[onclick="refreshGlobalCache()"]');
+    if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đồng bộ...'; btn.disabled = true; }
+    
+    globalStudentsCache = [];
+    
+    for (const [schoolName, dbInstance] of Object.entries(activeDatabases)) {
+        try {
+            const snap = await dbInstance.collection('yt_students').get();
+            snap.forEach(doc => {
+                globalStudentsCache.push({
+                    id: doc.id,
+                    schoolName: schoolName, // Đóng dấu tên trường vào học sinh
+                    ...doc.data()
+                });
+            });
+        } catch(e) { console.error(`Lỗi tải HS trường ${schoolName}:`, e); }
+    }
+    
+    if(btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Làm mới Dữ liệu'; btn.disabled = false; }
+    console.log(`Đã nạp ${globalStudentsCache.length} học sinh toàn hệ thống.`);
+}
+
+// Hàm loại bỏ dấu (Xài chung)
+function removeVietnameseTones(str) {
+    if (!str) return "";
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a").replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e").replace(/ì|í|ị|ỉ|ĩ/g, "i").replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o").replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u").replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y").replace(/đ/g, "d");
+    return str.toLowerCase();
+}
+
+// 3. Tìm kiếm tức thì từ bộ đệm (RAM)
+function searchGlobalSuggest(val) {
+    const box = document.getElementById('sp-lookup-suggest');
+    const hiddenId = document.getElementById('sp-lookup-id');
+    const hiddenSchool = document.getElementById('sp-lookup-school');
+    
+    if (val.length < 2) { box.style.display = 'none'; return; }
+    const q = removeVietnameseTones(val.trim());
+
+    const matched = globalStudentsCache.filter(s => {
+        const str = `${s.name_search} ${s.class.toLowerCase()} ${s.id.toLowerCase()} ${(s.studentCode||'').toLowerCase()} ${(s.phone||'')} ${(s.parentPhone||'')}`;
+        return str.includes(q);
+    }).slice(0, 15);
+
+    box.innerHTML = '';
+    if (matched.length === 0) {
+        box.innerHTML = '<div style="padding:15px; color:#ef4444; text-align:center;">Không tìm thấy!</div>';
+    } else {
+        matched.forEach(d => {
+            box.innerHTML += `
+                <div style="padding:10px 15px; border-bottom:1px solid #f1f5f9; cursor:pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'"
+                     onclick="selectGlobalStudent('${d.id}', '${d.name}', '${d.class}', '${d.schoolName}')">
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong style="color:#0f172a;">${d.name} <span style="color:#ef4444;">(${d.class})</span></strong>
+                        <span style="background:#e0e7ff; color:#4f46e5; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:bold;">${d.schoolName}</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:3px;">Mã YT: ${d.id} | Mã HS: ${d.studentCode||'--'}</div>
+                </div>`;
+        });
+    }
+    box.style.display = 'block';
+}
+
+function selectGlobalStudent(id, name, cls, schoolName) {
+    document.getElementById('sp-lookup-input').value = `${name} - ${cls} [${schoolName}]`;
+    document.getElementById('sp-lookup-id').value = id;
+    document.getElementById('sp-lookup-school').value = schoolName;
+    document.getElementById('sp-lookup-suggest').style.display = 'none';
+}
+
+// Ẩn box khi click ra ngoài
+document.addEventListener('click', e => {
+    if(e.target.id !== 'sp-lookup-input') document.getElementById('sp-lookup-suggest').style.display = 'none';
+});
+
+// 4. Tra cứu Dữ liệu Thực tế (Trực tiếp từ CSDL của trường đó)
+async function performGlobalLookup() {
+    const sid = document.getElementById('sp-lookup-id').value;
+    const schoolName = document.getElementById('sp-lookup-school').value;
+    const resDiv = document.getElementById('sp-lookup-result');
+
+    if (!sid || !schoolName) return alert("Chọn 1 học sinh từ danh sách gợi ý!");
+
+    const schoolDb = activeDatabases[schoolName];
+    if (!schoolDb) return alert("Mất kết nối với CSDL của trường này!");
+
+    resDiv.style.display = 'block';
+    resDiv.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p>FUSoftX đang truy xuất dữ liệu từ trường...</p></div>';
+
+    try {
+        const doc = await schoolDb.collection('yt_students').doc(sid).get();
+        const st = doc.data();
+
+        const vSnap = await schoolDb.collection('yt_visits').where('studentId', '==', sid).get();
+        let visits = []; vSnap.forEach(v => visits.push(v.data()));
+        visits.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+
+        let bmiHTML = `<span style="color:#94a3b8;">Chưa cập nhật</span>`;
+        if (st.height && st.weight) {
+            const h = parseFloat(st.height); const w = parseFloat(st.weight);
+            const bmi = (w / Math.pow(h/100, 2)).toFixed(1);
+            bmiHTML = `<strong style="color:${bmi < 18.5 ? "#f59e0b" : (bmi >= 25 ? "#ef4444" : "#10b981")}; font-size:1.1rem;">${bmi}</strong>`;
+        }
+
+        resDiv.innerHTML = `
+            <div class="form-card" style="background: #1e1b4b; color: white; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="color: white; margin-bottom: 5px;">${st.name}</h2>
+                    <div style="color: #a5b4fc;">Lớp: <b>${st.class}</b> | Trường: <b style="color:#fef08a;">${schoolName}</b></div>
+                </div>
+                <button onclick="openGlobalEdit('${st.id}', '${schoolName}')" class="btn" style="background:#4f46e5; color:white;"><i class="fas fa-edit"></i> Chỉnh sửa (Override)</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-card" style="margin:0;">
+                    <h3 style="color:#4f46e5;"><i class="fas fa-address-card"></i> Thông tin</h3>
+                    <p><b>Mã HS:</b> ${st.studentCode||'--'} | <b>Mã YT:</b> ${st.id}</p>
+                    <p><b>SĐT:</b> ${st.phone||'--'} | <b>PH:</b> ${st.parentPhone||'--'}</p>
+                    <p><b>Email LK:</b> <span style="color:#0ea5e9;">${st.linkedEmail||'Chưa có'}</span></p>
+                    <hr style="border:0; border-top:1px dashed #cbd5e1; margin:15px 0;">
+                    <div style="display:flex; justify-content:space-around; text-align:center;">
+                        <div><div style="font-size:0.8rem; color:#64748b;">CAO</div><b>${st.height||'--'} cm</b></div>
+                        <div><div style="font-size:0.8rem; color:#64748b;">NẶNG</div><b>${st.weight||'--'} kg</b></div>
+                        <div><div style="font-size:0.8rem; color:#64748b;">BMI</div>${bmiHTML}</div>
+                    </div>
+                </div>
+                <div class="form-card" style="margin:0;">
+                    <h3 style="color:#ef4444;"><i class="fas fa-history"></i> Lịch sử Khám Bệnh (${visits.length})</h3>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${visits.length === 0 ? '<p style="color:#94a3b8;">Chưa có lịch sử khám.</p>' : visits.map(v => `
+                            <div style="border-left: 3px solid #ef4444; background: #f8fafc; padding: 10px; margin-bottom: 8px;">
+                                <div style="font-size: 0.8rem; color: #64748b;">${v.timestamp ? new Date(v.timestamp.seconds*1000).toLocaleString('vi-VN') : ''}</div>
+                                <div><b>Bệnh:</b> ${v.symptom} <i class="fas fa-arrow-right"></i> <span style="color:#10b981;">${v.treatment}</span></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch(e) { resDiv.innerHTML = `<div style="color:red; text-align:center;">Lỗi: ${e.message}</div>`; }
+}
+
+// 5. Tính năng OVERRIDE (Chỉnh sửa trực tiếp từ FUSoftX)
+async function openGlobalEdit(sid, schoolName) {
+    const schoolDb = activeDatabases[schoolName];
+    try {
+        const doc = await schoolDb.collection('yt_students').doc(sid).get();
+        const d = doc.data();
+        
+        document.getElementById('sp-edit-school-badge').innerHTML = `<i class="fas fa-database"></i> Thuộc CSDL: ${schoolName}`;
+        document.getElementById('sp-edit-id').value = sid;
+        document.getElementById('sp-edit-school').value = schoolName;
+        
+        const sf = (id, val) => { document.getElementById(id).value = val || ''; };
+        sf('sp-edit-code', d.studentCode); sf('sp-edit-name', d.name); sf('sp-edit-class', d.class);
+        sf('sp-edit-dob', d.dob); sf('sp-edit-gender', d.gender); sf('sp-edit-phone', d.phone);
+        sf('sp-edit-parent-phone', d.parentPhone); sf('sp-edit-height', d.height); sf('sp-edit-weight', d.weight);
+        sf('sp-edit-note', d.medicalNote);
+
+        document.getElementById('sp-edit-modal').style.display = 'flex';
+    } catch(e) { alert("Lỗi đọc dữ liệu: " + e.message); }
+}
+
+async function saveGlobalStudentEdit() {
+    const sid = document.getElementById('sp-edit-id').value;
+    const schoolName = document.getElementById('sp-edit-school').value;
+    const schoolDb = activeDatabases[schoolName];
+
+    const dataToSave = {
+        studentCode: document.getElementById('sp-edit-code').value.trim(), 
+        name: document.getElementById('sp-edit-name').value.trim(),
+        class: document.getElementById('sp-edit-class').value.trim(),
+        name_search: removeVietnameseTones(document.getElementById('sp-edit-name').value.trim()),
+        dob: document.getElementById('sp-edit-dob').value,
+        gender: document.getElementById('sp-edit-gender').value,
+        phone: document.getElementById('sp-edit-phone').value.trim(),
+        parentPhone: document.getElementById('sp-edit-parent-phone').value.trim(),
+        height: document.getElementById('sp-edit-height').value.trim(),
+        weight: document.getElementById('sp-edit-weight').value.trim(),
+        medicalNote: document.getElementById('sp-edit-note').value.trim()
+    };
+
+    if(!dataToSave.name || !dataToSave.class) return alert("Tên và lớp không được trống!");
+
+    const btn = document.querySelector('button[onclick="saveGlobalStudentEdit()"]');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang nạp lên mây...';
+
+    try {
+        // Ghi đè thẳng vào Firebase của trường đó
+        await schoolDb.collection('yt_students').doc(sid).update(dataToSave);
+        alert("✅ Đã ghi đè dữ liệu thành công!");
+        document.getElementById('sp-edit-modal').style.display = 'none';
+        performGlobalLookup(); // Render lại giao diện hiển thị
+        refreshGlobalCache(); // Update lại RAM tìm kiếm
+    } catch(e) {
+        alert("Lỗi cập nhật: " + e.message);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-save"></i> Lưu đè lên CSDL Trường';
+    }
 }
