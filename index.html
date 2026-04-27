@@ -72,6 +72,7 @@
                 <button class="nav-btn" onclick="switchSaTab('tab-noti', this)"><i class="fas fa-bullhorn"></i> 3. Gửi Thông báo</button>
                 <button class="nav-btn" onclick="switchSaTab('tab-support', this)"><i class="fas fa-headset"></i> 4. Kênh Chat Hỗ trợ</button>
                 <button class="nav-btn" onclick="switchSaTab('tab-account', this)"><i class="fas fa-shield-alt"></i> 5. Bảo mật Tài khoản</button>
+                <button class="nav-btn" onclick="switchSaTab('tab-global-lookup', this)"><i class="fas fa-search-plus"></i> 6. Tra cứu Toàn Hệ Thống</button>
             </nav>
             <div style="padding: 20px;">
                 <button onclick="firebase.auth().signOut()" class="btn btn-danger" style="width:100%; justify-content:center; background: rgba(239,68,68,0.1); color: #ef4444;"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
@@ -205,6 +206,61 @@
                     <p style="font-size: 0.9rem; color: #64748b; line-height: 1.6;">Quyền Super Admin được cấp cứng cho hệ thống. Đổi mật khẩu qua Google Account.</p>
                 </div>
             </section>
+            <!-- TAB 6: TRA CỨU TOÀN HỆ THỐNG -->
+            <section id="tab-global-lookup" class="tab-pane" style="display:none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: var(--sp-dark); margin: 0;"><i class="fas fa-search-plus"></i> Tra cứu Toàn Hệ Thống</h2>
+                    <button onclick="refreshGlobalCache()" class="btn" style="background:#e2e8f0; color:#475569;"><i class="fas fa-sync-alt"></i> Làm mới Dữ liệu</button>
+                </div>
+                
+                <div class="form-card" style="background: #f8fafc; border: 1px solid #cbd5e1; box-shadow: none;">
+                    <div style="display: flex; gap: 15px; align-items: flex-end; position: relative;">
+                        <div style="flex: 1; position: relative;">
+                            <label style="font-weight: bold; font-size: 0.9rem; color: #1e293b; margin-bottom: 8px; display: block;">Tìm kiếm Học sinh (Từ tất cả các trường)</label>
+                            <input type="text" id="sp-lookup-input" placeholder="Gõ tên, mã học sinh, lớp hoặc sđt..." autocomplete="off" oninput="searchGlobalSuggest(this.value)" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                            <input type="hidden" id="sp-lookup-id"> 
+                            <input type="hidden" id="sp-lookup-school"> 
+                            
+                            <div id="sp-lookup-suggest" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #cbd5e1; border-radius:8px; max-height:300px; overflow-y:auto; z-index:1000; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-top:5px;"></div>
+                        </div>
+                        <button onclick="performGlobalLookup()" class="btn btn-primary" style="height: 44px; padding: 0 25px;">
+                            <i class="fas fa-search"></i> Tra cứu
+                        </button>
+                    </div>
+                </div>
+
+                <div id="sp-lookup-result" style="display: none; margin-top: 20px;"></div>
+            </section>
+
+    <!-- POPUP CHỈNH SỬA HỒ SƠ TỪ FUSOFTX -->
+    <div id="sp-edit-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.8); z-index:10000; align-items:center; justify-content:center;">
+        <div class="form-card" style="width:100%; max-width:700px; max-height:90vh; overflow-y:auto; position:relative;">
+            <button onclick="document.getElementById('sp-edit-modal').style.display='none'" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8;">&times;</button>
+            <h2 style="margin-bottom: 5px; color: var(--sp-primary);"><i class="fas fa-user-edit"></i> Cập nhật Hồ sơ (FUSoftX)</h2>
+            <div id="sp-edit-school-badge" style="font-size:0.85rem; background:#fee2e2; color:#ef4444; padding:4px 10px; border-radius:20px; display:inline-block; font-weight:bold; margin-bottom:20px;"></div>
+            
+            <input type="hidden" id="sp-edit-id">
+            <input type="hidden" id="sp-edit-school">
+            
+            <div class="input-group"><label>Mã Học Sinh</label><input type="text" id="sp-edit-code"></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="input-group"><label>Họ và tên</label><input type="text" id="sp-edit-name"></div>
+                <div class="input-group"><label>Lớp</label><input type="text" id="sp-edit-class"></div>
+                <div class="input-group"><label>Ngày sinh</label><input type="date" id="sp-edit-dob"></div>
+                <div class="input-group"><label>Giới tính</label><select id="sp-edit-gender"><option value="Nam">Nam</option><option value="Nữ">Nữ</option></select></div>
+                <div class="input-group"><label>SĐT Học sinh</label><input type="text" id="sp-edit-phone"></div>
+                <div class="input-group"><label>SĐT Phụ huynh</label><input type="text" id="sp-edit-parent-phone"></div>
+            </div>
+            <h4 style="color:#64748b; border-bottom:1px dashed #cbd5e1; padding-bottom:5px;">Chỉ số Y tế</h4>
+            <div style="display: flex; gap: 15px;">
+                <div class="input-group" style="flex: 1;"><label>Chiều cao (cm)</label><input type="number" id="sp-edit-height"></div>
+                <div class="input-group" style="flex: 1;"><label>Cân nặng (kg)</label><input type="number" id="sp-edit-weight"></div>
+            </div>
+            <div class="input-group"><label style="color:#ef4444;">Ghi chú lâm sàng / Bệnh nền</label><input type="text" id="sp-edit-note"></div>
+            
+            <button onclick="saveGlobalStudentEdit()" class="btn btn-primary" style="width:100%; justify-content:center;"><i class="fas fa-save"></i> Lưu đè lên CSDL Trường</button>
+        </div>
+    </div>
         </main>
     </div>
 
