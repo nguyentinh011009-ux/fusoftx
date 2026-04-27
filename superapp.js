@@ -157,7 +157,6 @@ function loadLinkedSchools() {
         }
 
         snap.forEach(doc => {
-            initAllDatabasesAndCache();
             const d = doc.data();
             allSchoolsConfig.push({ name: d.name, config: d.config }); 
             
@@ -181,6 +180,7 @@ function loadLinkedSchools() {
                     </div>
                 </div>`;
         });
+        initAllDatabasesAndCache();
     });
 }
 
