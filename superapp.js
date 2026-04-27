@@ -218,39 +218,38 @@ function loadClientNotis() {
     });
 }
 
-// --- LIVE CHAT HỖ TRỢ TICKETS ---
+// --- LIVE CHAT HỖ TRỢ TỪ ADMIN TRƯỜNG ---
 function loadClientTickets() {
     if (!clientDb) return;
     const filter = document.getElementById('ticket-filter').value;
-    let query = clientDb.collection('yt_tickets').orderBy('timestamp', 'desc');
-    if (filter !== 'all') query = clientDb.collection('yt_tickets').where('status', '==', filter).orderBy('timestamp', 'desc');
+    let query = clientDb.collection('yt_admin_support').orderBy('timestamp', 'desc');
+    if (filter !== 'all') query = clientDb.collection('yt_admin_support').where('status', '==', filter).orderBy('timestamp', 'desc');
 
     query.onSnapshot(snap => {
         const div = document.getElementById('sp-ticket-list'); div.innerHTML = '';
-        if (snap.empty) return div.innerHTML = '<p>Không có dữ liệu yêu cầu.</p>';
+        if (snap.empty) return div.innerHTML = '<p style="color:#64748b;">Không có dữ liệu yêu cầu từ trường này.</p>';
         snap.forEach(doc => {
             const t = doc.data(); 
-            let chatHtml = `<div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
-                <div style="align-self:flex-start; background:#e2e8f0; color:#1e293b; padding:10px 15px; border-radius:15px 15px 15px 0; max-width:85%; font-size:0.9rem;"><strong>${t.name} (HS):</strong> ${t.content}</div>`;
+            let chatHtml = `<div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px; max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">`;
             if (t.messages) {
                 t.messages.forEach(m => {
                     const isMe = m.sender === 'FUSoftX';
-                    chatHtml += `<div style="align-self:${isMe?'flex-end':'flex-start'}; background:${isMe?'#4f46e5':'#e2e8f0'}; color:${isMe?'white':'#1e293b'}; padding:10px 15px; border-radius:${isMe?'15px 15px 0 15px':'15px 15px 15px 0'}; max-width:85%; font-size:0.9rem;"><strong>${m.sender}:</strong> ${m.text}</div>`;
+                    chatHtml += `<div style="align-self:${isMe?'flex-end':'flex-start'}; background:${isMe?'#4f46e5':'#e2e8f0'}; color:${isMe?'white':'#1e293b'}; padding:10px 15px; border-radius:${isMe?'15px 15px 0 15px':'15px 15px 15px 0'}; max-width:85%; font-size:0.9rem;"><div style="font-size:0.7rem; opacity:0.7; margin-bottom:3px;">${m.senderName}</div>${m.text}</div>`;
                 });
             }
             chatHtml += `</div>`;
 
             div.innerHTML += `<div class="form-card" style="margin-bottom:0; border-top: 4px solid ${t.status==='resolved'?'#94a3b8':'#10b981'};">
                 <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                    <div><strong style="color:var(--sp-primary); font-size:1.1rem;">${t.ticketId}</strong> - ${t.name} (${t.class})</div>
-                    <span class="status-badge" style="background:#f1f5f9; color:#475569;">Trạng thái: ${t.status}</span>
+                    <div><strong style="color:var(--sp-primary); font-size:1.1rem;">${t.ticketId}</strong> - Yêu cầu từ Admin</div>
+                    <span class="status-badge" style="background:#f1f5f9; color:#475569;">Trạng thái: ${t.status === 'resolved' ? 'Đã đóng' : 'Đang xử lý'}</span>
                 </div>
                 ${chatHtml}
                 ${t.status !== 'resolved' ? `<div style="display:flex; gap:10px;">
-                    <input type="text" id="chat-reply-${doc.id}" placeholder="Nhập tin nhắn trả lời..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #cbd5e1; outline:none;">
+                    <input type="text" id="chat-reply-${doc.id}" placeholder="Nhập phản hồi cho Admin trường..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #cbd5e1; outline:none;">
                     <button onclick="replyClientTicket('${doc.id}')" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Gửi</button>
-                    <button onclick="closeClientTicket('${doc.id}')" class="btn btn-danger"><i class="fas fa-lock"></i> Đóng</button>
-                </div>` : `<div style="text-align:center; color:#94a3b8; font-size:0.85rem;">Phiên chat đã kết thúc</div>`}
+                    <button onclick="closeClientTicket('${doc.id}')" class="btn btn-danger"><i class="fas fa-lock"></i> Đóng Hỗ trợ</button>
+                </div>` : `<div style="text-align:center; color:#94a3b8; font-size:0.85rem;"><i class="fas fa-lock"></i> Phiên chat đã được bạn đóng và lưu trữ</div>`}
             </div>`;
         });
     });
@@ -258,9 +257,10 @@ function loadClientTickets() {
 
 async function replyClientTicket(id) {
     if (!clientDb) return; const txt = document.getElementById(`chat-reply-${id}`).value.trim(); if (!txt) return;
-    try { await clientDb.collection('yt_tickets').doc(id).update({ messages: firebase.firestore.FieldValue.arrayUnion({ sender: "FUSoftX", text: txt, time: Date.now() }), status: 'processing' }); } 
+    document.getElementById(`chat-reply-${id}`).value = '';
+    try { await clientDb.collection('yt_admin_support').doc(id).update({ messages: firebase.firestore.FieldValue.arrayUnion({ sender: "FUSoftX", senderName: "Tổng đài FUSoftX", text: txt, time: Date.now() }), status: 'processing' }); } 
     catch(e) { alert("Lỗi: " + e.message); }
 }
 async function closeClientTicket(id) {
-    if (!clientDb) return; if(confirm("Đóng phiên chat này?")) await clientDb.collection('yt_tickets').doc(id).update({ status: 'resolved' });
+    if (!clientDb) return; if(confirm("Đóng phiên chat này? Admin trường sẽ không thể gửi thêm tin nhắn vào đây nữa.")) await clientDb.collection('yt_admin_support').doc(id).update({ status: 'resolved' });
 }
