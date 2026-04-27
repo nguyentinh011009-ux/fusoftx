@@ -9,7 +9,7 @@ let clientApp = null;
 let clientDb = null;
 let currentSchoolName = "";
 let allSchoolsConfig = []; 
-
+let isGlobalCacheReady = false; // Cờ báo hiệu đã nạp xong RAM
 firebase.auth().onAuthStateChanged((user) => {
     if (user && SUPER_ADMIN_EMAILS.includes(user.email)) {
         document.getElementById('login-screen').style.display = 'none';
@@ -38,7 +38,7 @@ function switchSaTab(tabId, btn) {
     document.getElementById(tabId).style.display = 'block';
     btn.classList.add('active');
 
-    if(tabId === 'tab-noti') loadClientNotis();
+    if(tabId === 'tab-noti') loadFusoftxSentLog();
     if(tabId === 'tab-support') loadClientTickets();
 }
 
@@ -314,7 +314,7 @@ function toggleNotiInput() {
 }
 
 async function sendNotiToClient() {
-    if (!clientDb) return alert("❌ Hãy kết nối với một trường trước!");
+    if (!clientDb || !currentSchoolName) return alert("❌ Hãy kết nối với một trường trước!");
     const title = document.getElementById('noti-title').value.trim(); const content = document.getElementById('noti-content').value.trim();
     const type = document.getElementById('noti-target').value; let val = document.getElementById('noti-val').value.trim();
     if (!title || !content) return alert("Nhập Tiêu đề và Nội dung!");
@@ -322,22 +322,49 @@ async function sendNotiToClient() {
     if (type === 'class') val = val.toUpperCase(); if (type === 'student' && val.toLowerCase().startsWith('yt-')) val = val.toUpperCase();
 
     try {
-        await clientDb.collection('yt_notifications').add({ title, content, targetType: type, targetValue: val, sender: "FUSoftX", timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        const btn = document.querySelector('button[onclick="sendNotiToClient()"]');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...'; btn.disabled = true;
+
+        const payload = { title, content, targetType: type, targetValue: val, sender: "FUSoftX", timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+
+        // 1. Gửi xuống CSDL của Trường
+        await clientDb.collection('yt_notifications').add(payload);
+
+        // 2. Lưu một bản sao vào CSDL của FUSoftX để làm nhật ký
+        await db.collection('fusoftx_notifications_log').add({
+            ...payload,
+            schoolName: currentSchoolName // Ghi lại đã gửi cho trường nào
+        });
+        
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi Thông Báo'; btn.disabled = false;
         alert("✅ Bắn thông báo thành công!"); document.getElementById('noti-title').value=''; document.getElementById('noti-content').value='';
     } catch(e) { alert("Lỗi: " + e.message); }
 }
 
-function loadClientNotis() {
-    if (!clientDb) return;
-    clientDb.collection('yt_notifications').where('sender', '==', 'FUSoftX').orderBy('timestamp', 'desc').onSnapshot(snap => {
-        const div = document.getElementById('sp-noti-list'); div.innerHTML = '';
-        if (snap.empty) return div.innerHTML = '<p style="color:#64748b;">Chưa gửi thông báo nào cho trường này.</p>';
+function loadFusoftxSentLog() {
+    // Đã sửa lại để hàm này đọc log từ CSDL của FUSoftX
+    db.collection('fusoftx_notifications_log').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
+        const tbody = document.getElementById('fusoftx-noti-log'); 
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        if (snap.empty) return tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b;">Chưa gửi thông báo nào.</td></tr>';
+        
         snap.forEach(doc => {
-            const d = doc.data(); const time = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('vi-VN') : '';
-            div.innerHTML += `<div class="form-card" style="padding:15px; margin-bottom:0; border-left:3px solid var(--sp-warning);">
-                <div style="display:flex; justify-content:space-between;"><strong>${d.title}</strong><span class="status-badge" style="background:#fffbeb; color:#d97706;">${d.targetType}</span></div>
-                <div style="font-size:0.8rem; color:#64748b; margin-top:5px;">${time}</div><div style="margin-top:10px;">${d.content}</div>
-            </div>`;
+            const d = doc.data(); 
+            const time = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('vi-VN') : '';
+            
+            let target = d.targetValue;
+            if(d.targetType === 'admin_only') target = 'Admin';
+            if(d.targetType === 'all') target = 'Toàn bộ HS';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-size:0.85rem; color:#64748b;">${time}</td>
+                    <td style="font-weight:bold;">${d.schoolName}</td>
+                    <td><span class="status-badge" style="background:#fffbeb; color:#d97706;">${target}</span></td>
+                    <td>${d.title}</td>
+                </tr>
+            `;
         });
     });
 }
@@ -432,26 +459,37 @@ async function initAllDatabasesAndCache() {
 
 // 2. Nạp toàn bộ học sinh vào RAM để tra cứu siêu tốc
 async function refreshGlobalCache() {
+    isGlobalCacheReady = false; // Tắt cờ báo hiệu, bắt đầu nạp lại
     const btn = document.querySelector('button[onclick="refreshGlobalCache()"]');
-    if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đồng bộ...'; btn.disabled = true; }
+    const input = document.getElementById('sp-lookup-input');
     
+    if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang đồng bộ...'; btn.disabled = true; }
+    if(input) input.placeholder = "Đang nạp dữ liệu từ các trường, vui lòng chờ...";
+
     globalStudentsCache = [];
     
     for (const [schoolName, dbInstance] of Object.entries(activeDatabases)) {
         try {
             const snap = await dbInstance.collection('yt_students').get();
             snap.forEach(doc => {
+                const studentData = doc.data();
+                // Đảm bảo có name_search để không bị lỗi
+                if (!studentData.name_search) studentData.name_search = removeVietnameseTones(studentData.name || "");
+                
                 globalStudentsCache.push({
                     id: doc.id,
-                    schoolName: schoolName, // Đóng dấu tên trường vào học sinh
-                    ...doc.data()
+                    schoolName: schoolName,
+                    ...studentData
                 });
             });
         } catch(e) { console.error(`Lỗi tải HS trường ${schoolName}:`, e); }
     }
     
     if(btn) { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Làm mới Dữ liệu'; btn.disabled = false; }
+    if(input) input.placeholder = "Gõ tên, mã học sinh, lớp hoặc sđt...";
+    
     console.log(`Đã nạp ${globalStudentsCache.length} học sinh toàn hệ thống.`);
+    isGlobalCacheReady = true; // Bật cờ, báo hiệu đã sẵn sàng tìm kiếm!
 }
 
 // Hàm loại bỏ dấu (Xài chung)
@@ -467,6 +505,12 @@ function searchGlobalSuggest(val) {
     const hiddenId = document.getElementById('sp-lookup-id');
     const hiddenSchool = document.getElementById('sp-lookup-school');
     
+    if (!isGlobalCacheReady) {
+        box.innerHTML = '<div style="padding:15px; color:#f59e0b; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Hệ thống đang nạp dữ liệu... Vui lòng chờ trong giây lát.</div>';
+        box.style.display = 'block';
+        return;
+    }
+
     if (val.length < 2) { box.style.display = 'none'; return; }
     const q = removeVietnameseTones(val.trim());
 
