@@ -193,22 +193,36 @@ async function deleteSchoolContract(docId, name) {
 }
 
 // --- KẾT NỐI XUYÊN CSDL ---
+// --- KẾT NỐI XUYÊN CSDL & ĐĂNG NHẬP NGẦM ---
 async function connectToSchool(schoolName, configString) {
     try {
         const conf = JSON.parse(decodeURIComponent(configString));
         if (clientApp) { await clientApp.delete(); clientApp = null; clientDb = null; }
-        clientApp = firebase.initializeApp(conf, "ClientSchool_" + Date.now()); // Tránh lỗi Name Exist
+
+        // 1. Khởi tạo kết nối tới Firebase của Trường
+        clientApp = firebase.initializeApp(conf, "ClientSchool_" + Date.now());
         clientDb = clientApp.firestore();
+
+        // 2. KỸ THUẬT SILENT LOGIN: Đăng nhập ngầm bằng tài khoản Bot của FUSoftX
+        // Bước này giúp FUSoftX chính thức có danh phận trong CSDL của trường, vượt qua mọi bức tường Rules
+        await clientApp.auth().signInWithEmailAndPassword("master@fusoftx.com", "fusoftx123456");
+
         currentSchoolName = schoolName;
 
+        // 3. Cập nhật giao diện
         const stBar = document.getElementById('connection-status');
         stBar.style.background = '#dcfce7'; stBar.style.color = '#15803d';
         stBar.innerHTML = `<span><i class="fas fa-link"></i> ĐANG TRUY CẬP DỮ LIỆU: <strong style="text-transform:uppercase;">${schoolName}</strong></span> <button onclick="location.reload()" class="btn btn-danger" style="padding:5px 10px;">Ngắt kết nối</button>`;
+        
         document.getElementById('lbl-tab-noti').innerHTML = `<i class="fas fa-bullhorn"></i> Gửi Thông Báo - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
         document.getElementById('lbl-tab-support').innerHTML = `<i class="fas fa-headset"></i> Hỗ trợ Khách hàng - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
         
-        document.querySelectorAll('.nav-btn')[2].click(); // Chuyển sang Tab Thông báo
-    } catch (e) { alert("Kết nối thất bại: " + e.message); }
+        // Chuyển thẳng sang Tab Thông báo
+        document.querySelectorAll('.nav-btn')[2].click(); 
+
+    } catch (e) { 
+        alert("Kết nối thất bại (Vui lòng kiểm tra lại Rules Firebase hoặc Mã Config): " + e.message); 
+    }
 }
 
 // ==========================================
