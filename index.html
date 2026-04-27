@@ -88,18 +88,18 @@
                 <div id="sp-noti-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
             </section>
 
-            <!-- TAB 3: HỖ TRỢ TICKETS -->
+<!-- TAB 3: HỖ TRỢ TICKETS (CHAT 2 CHIỀU) -->
             <section id="tab-support" class="tab-pane">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                    <h2 class="tab-title" style="margin: 0;"><i class="fas fa-headset"></i> Trung tâm Hỗ trợ Khách hàng</h2>
+                    <h2 class="tab-title" style="margin: 0;"><i class="fas fa-headset"></i> Kênh Chat Hỗ Trợ Khách Hàng</h2>
                     <select id="ticket-filter" onchange="loadClientTickets()" style="padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-weight: bold;">
-                        <option value="all">Tất cả yêu cầu</option>
-                        <option value="pending">Mới gửi</option>
-                        <option value="processing">Đang giải quyết</option>
-                        <option value="resolved">Đã đóng</option>
+                        <option value="all">Tất cả phiên Chat</option>
+                        <option value="pending">Chưa xử lý</option>
+                        <option value="processing">Đang trao đổi</option>
+                        <option value="resolved">Đã đóng (Lưu trữ)</option>
                     </select>
                 </div>
-                <div id="sp-ticket-list" style="display: flex; flex-direction: column; gap: 15px;"></div>
+                <div id="sp-ticket-list" style="display: flex; flex-direction: column; gap: 20px;"></div>
             </section>
 
             <!-- TAB 4: LIÊN KẾT CƠ SỞ DỮ LIỆU -->
@@ -126,19 +126,44 @@
                 <div id="school-list" style="display: grid; gap: 15px;"></div>
             </section>
             
-            <!-- TAB 5: QUẢN LÝ TÀI KHOẢN -->
-            <section id="tab-account" class="tab-pane">
-                <h2 class="tab-title"><i class="fas fa-shield-alt"></i> Bảo mật Tài khoản Super Admin</h2>
-                <div class="form-card">
-                    <div class="input-group">
-                        <label>Tài khoản đang đăng nhập:</label>
-                        <input type="text" id="sa-profile-email" readonly style="background: #f1f5f9; color: #64748b; font-weight: bold;">
+          <!-- TAB 5: QUẢN LÝ HỢP ĐỒNG & CSDL -->
+            <section id="tab-link" class="tab-pane">
+                <h2 class="tab-title"><i class="fas fa-file-signature"></i> Quản lý Hợp đồng & Dữ liệu</h2>
+                
+                <div class="form-card" style="border-top: 4px solid var(--sp-primary);">
+                    <h3 style="margin-top: 0;">Tạo Hợp Đồng Mới</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="input-group"><label>Tên Trường / Đơn Vị</label><input type="text" id="contract-name" placeholder="VD: THPT Võ Thị Sáu"></div>
+                        <div class="input-group"><label>Người đại diện</label><input type="text" id="contract-rep" placeholder="Tên Hiệu trưởng / Admin"></div>
+                        <div class="input-group"><label>Số điện thoại liên hệ</label><input type="text" id="contract-phone" placeholder="SĐT"></div>
+                        <div class="input-group"><label>Gói dịch vụ</label>
+                            <select id="contract-package" style="padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                                <option value="Basic">Cơ bản (Quản lý nội bộ)</option>
+                                <option value="Pro">Nâng cao (Có AI + SMS)</option>
+                                <option value="Enterprise">Doanh nghiệp (Full tính năng)</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Ngày bắt đầu</label><input type="date" id="contract-start"></div>
+                        <div class="input-group"><label>Ngày kết thúc</label><input type="date" id="contract-end"></div>
                     </div>
-                    <p style="font-size: 0.9rem; color: #64748b; line-height: 1.6;">
-                        * Quyền Super Admin được cấp vĩnh viễn cho 2 địa chỉ Email hệ thống.<br>
-                        * Nếu bạn muốn thay đổi mật khẩu của Email này, vui lòng truy cập phần Cài đặt Tài khoản Google (My Account) của Google để thay đổi.
-                    </p>
+
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <p style="margin-top: 0; font-size: 0.85rem; color: #64748b; font-weight:bold;">THÔNG SỐ KẾT NỐI FIREBASE CỦA TRƯỜNG</p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <input type="text" id="cfg-apiKey" placeholder="apiKey *">
+                            <input type="text" id="cfg-projectId" placeholder="projectId *">
+                            <input type="text" id="cfg-appId" placeholder="appId *">
+                            <input type="text" id="cfg-authDomain" placeholder="authDomain">
+                            <input type="text" id="cfg-storageBucket" placeholder="storageBucket">
+                            <input type="text" id="cfg-messagingSenderId" placeholder="messagingSenderId">
+                        </div>
+                    </div>
+                    <button onclick="saveContract()" class="btn btn-primary" style="width: 100%; justify-content: center; height: 45px;"><i class="fas fa-file-signature"></i> Ký Hợp Đồng & Liên Kết CSDL</button>
                 </div>
+
+                <h3>Danh sách Hợp đồng đang quản lý</h3>
+                <div id="school-list" style="display: grid; gap: 15px;"></div>
             </section>
         </main>
     </div>
