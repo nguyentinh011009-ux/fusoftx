@@ -161,22 +161,38 @@
                         <label>Nội dung (Hỗ trợ dán mã HTML/Iframe)</label>
                         <textarea id="noti-content" rows="5" placeholder="Nhập văn bản bình thường hoặc dán mã nhúng <iframe> YouTube, Link ảnh..."></textarea>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="input-group">
-                            <label>Đối tượng nhận</label>
-                            <select id="noti-target" onchange="toggleNotiInput()">
-                                <option value="admin_only">Chỉ Gửi Admin/Bác sĩ</option>
-                                <option value="all">Gửi toàn bộ Học sinh trường</option>
-                                <option value="grade">Gửi theo Khối (VD: Khối 10)</option>
-                                <option value="class">Gửi theo Lớp (VD: 11A4)</option>
-                                <option value="student">Gửi 1 Học sinh (Mã YT)</option>
-                            </select>
-                        </div>
-                        <div class="input-group" id="box-noti-val" style="display: none;">
-                            <label id="lbl-noti-val">Nhập thông tin</label>
-                            <input type="text" id="noti-val" placeholder="...">
-                        </div>
-                    </div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+    <div class="input-group">
+        <label>Đối tượng nhận</label>
+        <select id="noti-target" onchange="toggleNotiInput()">
+            <option value="admin_only">Chỉ Gửi Admin/Bác sĩ</option>
+            <option value="all">Gửi toàn bộ Học sinh trường</option>
+            <option value="grade">Gửi theo Khối (VD: Khối 10)</option>
+            <option value="class">Gửi theo Lớp (VD: 11A4)</option>
+            <option value="student_list">Gửi cho Nhiều Học sinh (Chọn từ danh sách)</option>
+        </select>
+    </div>
+    <div class="input-group" id="box-noti-val" style="display: none;">
+        <label id="lbl-noti-val">Nhập thông tin</label>
+        <input type="text" id="noti-val" placeholder="...">
+    </div>
+</div>
+
+<!-- KHUNG TÌM KIẾM & CHỌN HỌC SINH -->
+<div id="box-select-students" style="display: none; background: white; padding: 15px; border-radius: 10px; border: 1px dashed var(--sp-primary); margin-bottom: 20px;">
+    <div class="input-group" style="margin-bottom: 10px;">
+        <label><i class="fas fa-search"></i> Tìm và chọn Học sinh để gửi</label>
+        <input type="text" id="noti-search-student" oninput="searchStudentForNoti(this.value)" placeholder="Gõ tên, mã HS, lớp...">
+    </div>
+    <div id="noti-search-results" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px; display:none;"></div>
+    
+    <div>
+        <label style="font-weight:bold; font-size:0.9rem; color:#475569;">ĐÃ CHỌN (<span id="noti-selected-count">0</span>):</label>
+        <div id="noti-selected-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+            <span style="color:#94a3b8; font-style:italic;">Chưa chọn ai...</span>
+        </div>
+    </div>
+</div>
                     <button onclick="sendNotiToClient()" class="btn btn-primary" style="width: 100%; justify-content: center; background: var(--sp-warning);"><i class="fas fa-paper-plane"></i> Gửi Thông Báo Xuống Hệ Thống</button>
                 </div>
 
