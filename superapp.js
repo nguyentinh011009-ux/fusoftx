@@ -5,6 +5,8 @@
 const SUPER_ADMIN_EMAILS = ["nguyentinh52009@gmail.com", "tomizy09icloud@gmail.com"];
 let activeDatabases = {}; // Nơi chứa KẾT NỐI SẴN SÀNG của tất cả các trường
 let globalStudentsCache = []; // Nơi chứa TẤT CẢ HỌC SINH của hệ thống
+let clientStudentsCache = []; // Bộ nhớ đệm học sinh của TRƯỜNG ĐANG KẾT NỐI
+let selectedNotiStudents = []; // Mảng chứa các học sinh đã được tick chọn
 let clientApp = null;
 let clientDb = null;
 let currentSchoolName = "";
@@ -303,59 +305,155 @@ async function loadGlobalDashboard() {
     }
 }
 
-// --- GỬI THÔNG BÁO ---
-function toggleNotiInput() {
+// ==========================================
+// HỆ THỐNG GỬI THÔNG BÁO NÂNG CAO (Gửi nhiều & Thu hồi)
+// ==========================================
+let clientStudentsCache = []; // Cache học sinh của trường đang chọn
+let selectedNotiStudents = []; // HS đã được tick chọn
+
+async function toggleNotiInput() {
     const type = document.getElementById('noti-target').value;
-    const box = document.getElementById('box-noti-val');
+    const boxVal = document.getElementById('box-noti-val');
+    const boxSelect = document.getElementById('box-select-students');
     const lbl = document.getElementById('lbl-noti-val');
     const inp = document.getElementById('noti-val');
-    if (['admin_only', 'all'].includes(type)) { box.style.display = 'none'; inp.value = ''; }
-    else { box.style.display = 'block'; lbl.innerText = type === 'grade' ? "Nhập Khối (VD: 10)" : (type === 'class' ? "Nhập Lớp (VD: 11A4)" : "Nhập Mã YT"); }
+
+    boxVal.style.display = 'none';
+    boxSelect.style.display = 'none';
+
+    if (['grade', 'class'].includes(type)) {
+        boxVal.style.display = 'block';
+        lbl.innerText = type === 'grade' ? "Nhập Khối (VD: 10)" : "Nhập Lớp (VD: 11A4)";
+    } else if (type === 'student_list') {
+        if (!clientDb) {
+            alert("Vui lòng kết nối tới một trường trước để tải danh sách học sinh!");
+            document.getElementById('noti-target').value = 'admin_only'; // Reset
+            return;
+        }
+        boxSelect.style.display = 'block';
+
+        // Nạp cache HS của trường này nếu chưa có
+        if (clientStudentsCache.length === 0) {
+            document.getElementById('noti-search-results').innerHTML = '<div style="padding:15px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Đang tải DS Học sinh...</div>';
+            document.getElementById('noti-search-results').style.display = 'block';
+            
+            const snap = await clientDb.collection('yt_students').get();
+            snap.forEach(doc => {
+                const data = doc.data();
+                if (!data.name_search) data.name_search = removeVietnameseTones(data.name || "");
+                clientStudentsCache.push({ id: doc.id, ...data });
+            });
+            
+            document.getElementById('noti-search-results').style.display = 'none';
+        }
+    }
+}
+
+function searchStudentForNoti(query) {
+    const resDiv = document.getElementById('noti-search-results');
+    if (query.length < 2) { resDiv.style.display = 'none'; return; }
+    
+    const q = removeVietnameseTones(query);
+    const matched = clientStudentsCache.filter(s => {
+        const str = `${s.name_search} ${s.class.toLowerCase()} ${s.id.toLowerCase()}`;
+        return str.includes(q);
+    }).slice(0, 10);
+
+    resDiv.innerHTML = '';
+    if(matched.length > 0) {
+        matched.forEach(s => {
+            const isSelected = selectedNotiStudents.some(item => item.id === s.id);
+            resDiv.innerHTML += `
+                <div style="padding:10px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${s.name} (${s.class})</span>
+                    <button onclick="toggleSelectNotiStudent('${s.id}', '${s.name}')" class="btn" style="padding:5px 10px; font-size:0.8rem; background:${isSelected?'#fee2e2':'#eff6ff'}; color:${isSelected?'#ef4444':'#4f46e5'};">${isSelected?'Bỏ chọn':'Chọn'}</button>
+                </div>
+            `;
+        });
+    } else {
+        resDiv.innerHTML = '<div style="padding:10px; text-align:center;">Không tìm thấy!</div>';
+    }
+    resDiv.style.display = 'block';
+}
+
+function toggleSelectNotiStudent(id, name) {
+    const index = selectedNotiStudents.findIndex(s => s.id === id);
+    if (index > -1) selectedNotiStudents.splice(index, 1);
+    else selectedNotiStudents.push({ id, name });
+    
+    renderSelectedNotiStudents();
+    searchStudentForNoti(document.getElementById('noti-search-student').value);
+}
+
+function renderSelectedNotiStudents() {
+    const listDiv = document.getElementById('noti-selected-list');
+    const countSpan = document.getElementById('noti-selected-count');
+    countSpan.innerText = selectedNotiStudents.length;
+
+    listDiv.innerHTML = '';
+    if (selectedNotiStudents.length === 0) {
+        listDiv.innerHTML = '<span style="color:#94a3b8; font-style:italic;">Chưa chọn ai...</span>';
+        return;
+    }
+    selectedNotiStudents.forEach(s => {
+        listDiv.innerHTML += `<span style="background:#4f46e5; color:white; padding:4px 10px; border-radius:15px; font-size:0.8rem;">${s.name} <i onclick="toggleSelectNotiStudent('${s.id}')" class="fas fa-times-circle" style="cursor:pointer; margin-left:5px;"></i></span>`;
+    });
 }
 
 async function sendNotiToClient() {
     if (!clientDb || !currentSchoolName) return alert("❌ Hãy kết nối với một trường trước!");
     const title = document.getElementById('noti-title').value.trim(); const content = document.getElementById('noti-content').value.trim();
-    const type = document.getElementById('noti-target').value; let val = document.getElementById('noti-val').value.trim();
+    const type = document.getElementById('noti-target').value; 
+    
     if (!title || !content) return alert("Nhập Tiêu đề và Nội dung!");
-    if (!['admin_only', 'all'].includes(type) && !val) return alert("Nhập đối tượng nhận!");
-    if (type === 'class') val = val.toUpperCase(); if (type === 'student' && val.toLowerCase().startsWith('yt-')) val = val.toUpperCase();
+    
+    let targetValue;
+    if(type === 'student_list') {
+        if(selectedNotiStudents.length === 0) return alert("Vui lòng tick chọn ít nhất 1 học sinh!");
+        targetValue = selectedNotiStudents.map(s => s.id);
+    } else if (type === 'grade' || type === 'class') {
+        targetValue = document.getElementById('noti-val').value.trim();
+        if(!targetValue) return alert("Vui lòng nhập Khối/Lớp!");
+    } else {
+        targetValue = type === 'all' ? 'all' : 'admin_only';
+    }
 
     try {
         const btn = document.querySelector('button[onclick="sendNotiToClient()"]');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...'; btn.disabled = true;
 
-        const payload = { title, content, targetType: type, targetValue: val, sender: "FUSoftX", timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+        const payload = { title, content, targetType: type, targetValue, sender: "FUSoftX", timestamp: firebase.firestore.FieldValue.serverTimestamp() };
 
-        // 1. Gửi xuống CSDL của Trường
-        await clientDb.collection('yt_notifications').add(payload);
+        // Gửi xuống CSDL của Trường
+        const docRef = await clientDb.collection('yt_notifications').add(payload);
 
-        // 2. Lưu một bản sao vào CSDL của FUSoftX để làm nhật ký
+        // Lưu bản sao vào CSDL của FUSoftX, KÈM THEO ID THU HỒI
         await db.collection('fusoftx_notifications_log').add({
             ...payload,
-            schoolName: currentSchoolName // Ghi lại đã gửi cho trường nào
+            schoolName: currentSchoolName,
+            clientNotiId: docRef.id // Lưu lại ID của thông báo bên phía Trường
         });
         
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi Thông Báo'; btn.disabled = false;
-        alert("✅ Bắn thông báo thành công!"); document.getElementById('noti-title').value=''; document.getElementById('noti-content').value='';
+        alert("✅ Bắn thông báo thành công!"); 
+        document.getElementById('noti-title').value=''; document.getElementById('noti-content').value='';
     } catch(e) { alert("Lỗi: " + e.message); }
 }
 
 function loadFusoftxSentLog() {
-    // Đã sửa lại để hàm này đọc log từ CSDL của FUSoftX
     db.collection('fusoftx_notifications_log').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
         const tbody = document.getElementById('fusoftx-noti-log'); 
         if(!tbody) return;
         tbody.innerHTML = '';
-        if (snap.empty) return tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#64748b;">Chưa gửi thông báo nào.</td></tr>';
+        if (snap.empty) return tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b;">Chưa gửi thông báo nào.</td></tr>';
         
         snap.forEach(doc => {
             const d = doc.data(); 
             const time = d.timestamp ? new Date(d.timestamp.seconds*1000).toLocaleString('vi-VN') : '';
             
-            let target = d.targetValue;
-            if(d.targetType === 'admin_only') target = 'Admin';
-            if(d.targetType === 'all') target = 'Toàn bộ HS';
+            let target;
+            if (d.targetType === 'student_list') target = `${d.targetValue.length} HS được chọn`;
+            else target = d.targetValue;
             
             tbody.innerHTML += `
                 <tr>
@@ -363,12 +461,16 @@ function loadFusoftxSentLog() {
                     <td style="font-weight:bold;">${d.schoolName}</td>
                     <td><span class="status-badge" style="background:#fffbeb; color:#d97706;">${target}</span></td>
                     <td>${d.title}</td>
+                    <td>
+                        <button onclick="recallNotification('${d.schoolName}', '${d.clientNotiId}')" class="btn" style="padding:5px 10px; background:#fee2e2; color:#ef4444; font-size:0.8rem;">
+                            <i class="fas fa-undo"></i> Thu hồi
+                        </button>
+                    </td>
                 </tr>
             `;
         });
     });
 }
-
 // ==========================================
 // TÍNH NĂNG NÂNG CẤP: CHAT TỰ ĐỘNG CUỘN & ĐÚNG BẢNG MỚI
 // ==========================================
@@ -674,4 +776,53 @@ async function saveGlobalStudentEdit() {
     } finally {
         btn.innerHTML = '<i class="fas fa-save"></i> Lưu đè lên CSDL Trường';
     }
+}
+// HÀM THU HỒI TIN NHẮN
+async function recallNotification(schoolName, clientNotiId) {
+    if (!activeDatabases[schoolName]) return alert(`Kết nối tới trường ${schoolName} đã mất. Vui lòng tải lại trang.`);
+    if (!confirm(`Thu hồi vĩnh viễn thông báo này khỏi hệ thống của trường ${schoolName}?`)) return;
+
+    try {
+        const schoolDb = activeDatabases[schoolName];
+        
+        // Xóa thông báo ở CSDL của trường
+        await schoolDb.collection('yt_notifications').doc(clientNotiId).delete();
+        
+        // Xóa log ở CSDL của FUSoftX
+        const logSnap = await db.collection('fusoftx_notifications_log').where('clientNotiId', '==', clientNotiId).get();
+        if(!logSnap.empty) {
+            await db.collection('fusoftx_notifications_log').doc(logSnap.docs[0].id).delete();
+        }
+        
+        alert("✅ Thu hồi thành công!");
+    } catch(e) {
+        alert("Lỗi thu hồi: " + e.message);
+    }
+}
+
+// CẬP NHẬT KHI KẾT NỐI TRƯỜNG: Reset bộ nhớ đệm
+async function connectToSchool(schoolName, configString) {
+    try {
+        const conf = JSON.parse(decodeURIComponent(configString));
+        if (clientApp) { await clientApp.delete(); clientApp = null; clientDb = null; }
+        clientApp = firebase.initializeApp(conf, "ClientSchool_" + Date.now()); 
+        clientDb = clientApp.firestore();
+        
+        await clientApp.auth().signInWithEmailAndPassword("master@fusoftx.com", "fusoftx123456");
+        currentSchoolName = schoolName;
+
+        // Reset Cache khi kết nối trường mới
+        clientStudentsCache = [];
+        selectedNotiStudents = [];
+        renderSelectedNotiStudents();
+        document.getElementById('noti-search-student').value = '';
+
+        const stBar = document.getElementById('connection-status');
+        stBar.style.background = '#dcfce7'; stBar.style.color = '#15803d';
+        stBar.innerHTML = `<span><i class="fas fa-link"></i> ĐANG TRUY CẬP DỮ LIỆU: <strong style="text-transform:uppercase;">${schoolName}</strong></span> <button onclick="location.reload()" class="btn btn-danger" style="padding:5px 10px;">Ngắt kết nối</button>`;
+        document.getElementById('lbl-tab-noti').innerHTML = `<i class="fas fa-bullhorn"></i> Gửi Thông Báo - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
+        document.getElementById('lbl-tab-support').innerHTML = `<i class="fas fa-headset"></i> Hỗ trợ Khách hàng - <span style="color:var(--sp-primary); text-transform:uppercase;">${schoolName}</span>`;
+        
+        document.querySelectorAll('.nav-btn')[2].click(); 
+    } catch (e) { alert("Kết nối thất bại: " + e.message); }
 }
