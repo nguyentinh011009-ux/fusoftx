@@ -308,7 +308,7 @@ async function loadGlobalDashboard() {
 // ==========================================
 // HỆ THỐNG GỬI THÔNG BÁO NÂNG CAO (Gửi nhiều & Thu hồi)
 // ==========================================
-let clientStudentsCache = []; // Cache học sinh của trường đang chọn
+clientStudentsCache = []; // Cache học sinh của trường đang chọn
 let selectedNotiStudents = []; // HS đã được tick chọn
 
 async function toggleNotiInput() {
